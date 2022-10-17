@@ -15,10 +15,7 @@ class Actor:
 actor = Actor.remote()
 
 NUM_TASKS = 1000
-result_refs = []
-# When NUM_TASKS is large enough, this will eventually OOM.
-for _ in range(NUM_TASKS):
-    result_refs.append(actor.heavy_compute.remote())
+result_refs = [actor.heavy_compute.remote() for _ in range(NUM_TASKS)]
 ray.get(result_refs)
 # __without_backpressure_end__
 

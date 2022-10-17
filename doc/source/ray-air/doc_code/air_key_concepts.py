@@ -81,13 +81,12 @@ import tensorflow as tf
 
 # This can be a trained model.
 def build_model() -> tf.keras.Model:
-    model = tf.keras.Sequential(
+    return tf.keras.Sequential(
         [
             tf.keras.layers.InputLayer(input_shape=(1,)),
             tf.keras.layers.Dense(1),
         ]
     )
-    return model
 
 
 model = build_model()

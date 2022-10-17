@@ -75,8 +75,7 @@ assert array_size == ray.get(get_size.remote(ref_generator))
 # __generator_errors_start__
 @ray.remote
 def generator():
-    for i in range(2):
-        yield i
+    yield from range(2)
     raise Exception("error")
 
 

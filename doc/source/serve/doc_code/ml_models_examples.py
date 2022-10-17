@@ -12,11 +12,7 @@ class BatchingExample:
 
     @serve.batch
     async def handle_batch(self, requests: List[Request]) -> List[Dict]:
-        responses = []
-        for request in requests:
-            responses.append(request.json())
-
-        return responses
+        return [request.json() for request in requests]
 
     async def __call__(self, request: Request) -> List[Dict]:
         return await self.handle_batch(request)

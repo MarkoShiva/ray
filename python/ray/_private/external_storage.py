@@ -89,12 +89,7 @@ class ExternalStorage(metaclass=abc.ABCMeta):
 
     def _get_objects_from_store(self, object_refs):
         worker = ray._private.worker.global_worker
-        # Since the object should always exist in the plasma store before
-        # spilling, it can directly get the object from the local plasma
-        # store.
-        # issue: https://github.com/ray-project/ray/pull/13831
-        ray_object_pairs = worker.core_worker.get_if_local(object_refs)
-        return ray_object_pairs
+        return worker.core_worker.get_if_local(object_refs)
 
     def _put_object_to_store(
         self, metadata, data_size, file_like, object_ref, owner_address
@@ -436,9 +431,7 @@ class ExternalStorageRayStorageImpl(ExternalStorage):
             self._fs.delete_dir(self._prefix)
         except Exception:
             logger.exception(
-                "Error cleaning up spill files. "
-                "You might still have remaining spilled "
-                "objects inside `{}`.".format(self._prefix)
+                f"Error cleaning up spill files. You might still have remaining spilled objects inside `{self._prefix}`."
             )
 
 
@@ -519,7 +512,7 @@ class ExternalStorageSmartOpenImpl(ExternalStorage):
         else:
             self.transport_params = {}
 
-        self.transport_params.update(self.override_transport_params)
+        self.transport_params |= self.override_transport_params
 
     def spill_objects(self, object_refs, owner_addresses) -> List[str]:
         if len(object_refs) == 0:

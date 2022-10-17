@@ -108,11 +108,7 @@ class Node:
             node_ip_address = ray.util.get_node_ip_address()
         self._node_ip_address = node_ip_address
 
-        if ray_params.raylet_ip_address:
-            raylet_ip_address = ray_params.raylet_ip_address
-        else:
-            raylet_ip_address = node_ip_address
-
+        raylet_ip_address = ray_params.raylet_ip_address or node_ip_address
         if raylet_ip_address != node_ip_address and (not connect_only or head):
             raise ValueError(
                 "The raylet IP address should only be different than the node "
@@ -176,7 +172,7 @@ class Node:
         # Register the temp dir.
         if head:
             # date including microsecond
-            date_str = datetime.datetime.today().strftime("%Y-%m-%d_%H-%M-%S_%f")
+            date_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S_%f")
             self.session_name = f"session_{date_str}_{os.getpid()}"
         else:
             session_name = ray._private.utils.internal_kv_get_with_retry(
@@ -255,8 +251,9 @@ class Node:
 
         # Pick a GCS server port.
         if head:
-            gcs_server_port = os.getenv(ray_constants.GCS_PORT_ENVIRONMENT_VARIABLE)
-            if gcs_server_port:
+            if gcs_server_port := os.getenv(
+                ray_constants.GCS_PORT_ENVIRONMENT_VARIABLE
+            ):
                 ray_params.update_if_absent(gcs_server_port=gcs_server_port)
             if ray_params.gcs_server_port is None or ray_params.gcs_server_port == 0:
                 ray_params.gcs_server_port = self._get_cached_port("gcs_server_port")
@@ -647,9 +644,7 @@ class Node:
             if index == 0:
                 filename = os.path.join(directory_name, prefix + suffix)
             else:
-                filename = os.path.join(
-                    directory_name, prefix + "." + str(index) + suffix
-                )
+                filename = os.path.join(directory_name, f"{prefix}.{str(index)}{suffix}")
             index += 1
             if not os.path.exists(filename):
                 # Save the index.
@@ -758,16 +753,15 @@ class Node:
         result = socket_path
         is_mac = sys.platform.startswith("darwin")
         if sys.platform == "win32":
-            if socket_path is None:
+            if result is None:
                 result = f"tcp://{self._localhost}" f":{self._get_unused_port()}"
         else:
-            if socket_path is None:
+            if result is None:
                 result = self._make_inc_temp(
                     prefix=default_prefix, directory_name=self._sockets_dir
                 )
             else:
-                try_to_create_directory(os.path.dirname(socket_path))
-
+                try_to_create_directory(os.path.dirname(result))
             # Check socket path length to make sure it's short enough
             maxlen = (104 if is_mac else 108) - 1  # sockaddr_un->sun_path
             if len(result.split("://", 1)[-1].encode("utf-8")) > maxlen:
@@ -799,13 +793,13 @@ class Node:
         # Maps a Node.unique_id to a dict that maps port names to port numbers.
         ports_by_node: Dict[str, Dict[str, int]] = defaultdict(dict)
 
-        with FileLock(file_path + ".lock"):
+        with FileLock(f"{file_path}.lock"):
             if not os.path.exists(file_path):
                 with open(file_path, "w") as f:
                     json.dump({}, f)
 
             with open(file_path, "r") as f:
-                ports_by_node.update(json.load(f))
+                ports_by_node |= json.load(f)
 
             if (
                 self.unique_id in ports_by_node
@@ -1379,9 +1373,12 @@ class Node:
         """
         result = []
         for process_type, process_infos in self.all_processes.items():
-            for process_info in process_infos:
-                if process_info.process.poll() is None:
-                    result.append((process_type, process_info.process))
+            result.extend(
+                (process_type, process_info.process)
+                for process_info in process_infos
+                if process_info.process.poll() is None
+            )
+
         return result
 
     def dead_processes(self):
@@ -1396,9 +1393,12 @@ class Node:
         """
         result = []
         for process_type, process_infos in self.all_processes.items():
-            for process_info in process_infos:
-                if process_info.process.poll() is not None:
-                    result.append((process_type, process_info.process))
+            result.extend(
+                (process_type, process_info.process)
+                for process_info in process_infos
+                if process_info.process.poll() is not None
+            )
+
         return result
 
     def any_processes_alive(self):
@@ -1421,8 +1421,9 @@ class Node:
         return not any(self.dead_processes())
 
     def destroy_external_storage(self):
-        object_spilling_config = self._config.get("object_spilling_config", {})
-        if object_spilling_config:
+        if object_spilling_config := self._config.get(
+            "object_spilling_config", {}
+        ):
             object_spilling_config = json.loads(object_spilling_config)
             from ray._private import external_storage
 

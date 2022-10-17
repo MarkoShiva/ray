@@ -25,8 +25,7 @@ def list_changed_files(commit_range):
     Returns:
         list: List of changed files within the commit range
     """
-    base_branch = os.environ.get("BUILDKITE_PULL_REQUEST_BASE_BRANCH")
-    if base_branch:
+    if base_branch := os.environ.get("BUILDKITE_PULL_REQUEST_BASE_BRANCH"):
         pull_command = ["git", "fetch", "origin", base_branch]
         subprocess.check_call(pull_command)
 
@@ -59,12 +58,10 @@ def get_commit_range():
         with open(os.environ["GITHUB_EVENT_PATH"], "rb") as f:
             event = json.loads(f.read())
         base = event["pull_request"]["base"]["sha"]
-        commit_range = "{}...{}".format(base, event.get("after", ""))
+        commit_range = f'{base}...{event.get("after", "")}'
     elif os.environ.get("BUILDKITE"):
-        commit_range = "origin/{}...{}".format(
-            os.environ["BUILDKITE_PULL_REQUEST_BASE_BRANCH"],
-            os.environ["BUILDKITE_COMMIT"],
-        )
+        commit_range = f'origin/{os.environ["BUILDKITE_PULL_REQUEST_BASE_BRANCH"]}...{os.environ["BUILDKITE_COMMIT"]}'
+
 
     assert commit_range is not None
     return commit_range

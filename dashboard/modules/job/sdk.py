@@ -280,10 +280,10 @@ class JobSubmissionClient(SubmissionClient):
 
         if r.status_code == 200:
             jobs_info_json = r.json()
-            jobs_info = [
+            return [
                 JobDetails(**job_info_json) for job_info_json in jobs_info_json
             ]
-            return jobs_info
+
         else:
             self._raise_error(r)
 
@@ -367,8 +367,8 @@ class JobSubmissionClient(SubmissionClient):
             job server fails.
         """
         async with aiohttp.ClientSession(
-            cookies=self._cookies, headers=self._headers
-        ) as session:
+                cookies=self._cookies, headers=self._headers
+            ) as session:
             ws = await session.ws_connect(
                 f"{self._address}/api/jobs/{job_id}/logs/tail"
             )
@@ -380,5 +380,3 @@ class JobSubmissionClient(SubmissionClient):
                     yield msg.data
                 elif msg.type == aiohttp.WSMsgType.CLOSED:
                     break
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    pass

@@ -200,7 +200,7 @@ def test_get_status(ray_start_stop):
         expected_deployment_names.remove(deployment_status["name"])
         assert deployment_status["status"] in {"UPDATING", "HEALTHY"}
         assert deployment_status["message"] == ""
-    assert len(expected_deployment_names) == 0
+    assert not expected_deployment_names
     print("Deployments' statuses are correct.")
 
     assert serve_status["app_status"]["status"] in {"DEPLOYING", "RUNNING"}

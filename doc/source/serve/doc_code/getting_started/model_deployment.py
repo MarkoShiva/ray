@@ -22,10 +22,7 @@ class Translator:
         # Run inference
         model_output = self.model(text)
 
-        # Post-process output to return only the translation text
-        translation = model_output[0]["translation_text"]
-
-        return translation
+        return model_output[0]["translation_text"]
 
     async def __call__(self, http_request: Request) -> str:
         english_text: str = await http_request.json()

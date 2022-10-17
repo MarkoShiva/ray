@@ -160,7 +160,6 @@ def parse_cluster_info(
 
     if module_string == "ray":
         raise ValueError(f"Internal error: unexpected Ray Client address {address}.")
-    # If user passes http(s)://, go through normal parsing.
     if module_string in {"http", "https"}:
         return get_job_submission_client_cluster_info(
             inner_address,
@@ -170,28 +169,26 @@ def parse_cluster_info(
             headers=headers,
             _use_tls=(module_string == "https"),
         )
-    # Try to dynamically import the function to get cluster info.
-    else:
-        try:
-            module = importlib.import_module(module_string)
-        except Exception:
-            raise RuntimeError(
-                f"Module: {module_string} does not exist.\n"
-                f"This module was parsed from address: {address}"
-            ) from None
-        assert "get_job_submission_client_cluster_info" in dir(module), (
-            f"Module: {module_string} does "
-            "not have `get_job_submission_client_cluster_info`.\n"
+    try:
+        module = importlib.import_module(module_string)
+    except Exception:
+        raise RuntimeError(
+            f"Module: {module_string} does not exist.\n"
             f"This module was parsed from address: {address}"
-        )
+        ) from None
+    assert "get_job_submission_client_cluster_info" in dir(module), (
+        f"Module: {module_string} does "
+        "not have `get_job_submission_client_cluster_info`.\n"
+        f"This module was parsed from address: {address}"
+    )
 
-        return module.get_job_submission_client_cluster_info(
-            inner_address,
-            create_cluster_if_needed=create_cluster_if_needed,
-            cookies=cookies,
-            metadata=metadata,
-            headers=headers,
-        )
+    return module.get_job_submission_client_cluster_info(
+        inner_address,
+        create_cluster_if_needed=create_cluster_if_needed,
+        cookies=cookies,
+        metadata=metadata,
+        headers=headers,
+    )
 
 
 class SubmissionClient:

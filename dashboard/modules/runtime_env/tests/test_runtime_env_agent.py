@@ -11,7 +11,7 @@ def test_reference_table():
     expected_unused_runtime_env = str()
 
     def uris_parser(runtime_env) -> Tuple[str, UriType]:
-        result = list()
+        result = []
         result.append((runtime_env.working_dir(), "working_dir"))
         py_module_uris = runtime_env.py_modules()
         for uri in py_module_uris:

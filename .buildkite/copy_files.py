@@ -36,12 +36,11 @@ def perform_auth():
         aws_region="us-west-2",
         aws_service="execute-api",
     )
-    resp = requests.get(
+    return requests.get(
         "https://vop4ss7n22.execute-api.us-west-2.amazonaws.com/endpoint/",
         auth=auth,
         params={"job_id": os.environ["BUILDKITE_JOB_ID"]},
     )
-    return resp
 
 
 def handle_docker_login(resp):
@@ -54,11 +53,11 @@ def handle_docker_login(resp):
 def gather_paths(dir_path) -> List[str]:
     dir_path = dir_path.replace("/", os.path.sep)
     assert os.path.exists(dir_path)
-    if os.path.isdir(dir_path):
-        paths = [os.path.join(dir_path, f) for f in os.listdir(dir_path)]
-    else:
-        paths = [dir_path]
-    return paths
+    return (
+        [os.path.join(dir_path, f) for f in os.listdir(dir_path)]
+        if os.path.isdir(dir_path)
+        else [dir_path]
+    )
 
 
 dest_resp_mapping = {

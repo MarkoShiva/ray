@@ -25,15 +25,15 @@ class Option:
 
     def validate(self, keyword: str, value: Any):
         """Validate the option."""
-        if self.type_constraint is not None:
-            if not isinstance(value, self.type_constraint):
-                raise TypeError(
-                    f"The type of keyword '{keyword}' must be {self.type_constraint}, "
-                    f"but received type {type(value)}"
-                )
-        if self.value_constraint is not None:
-            if not self.value_constraint(value):
-                raise ValueError(self.error_message_for_value_constraint)
+        if self.type_constraint is not None and not isinstance(
+            value, self.type_constraint
+        ):
+            raise TypeError(
+                f"The type of keyword '{keyword}' must be {self.type_constraint}, "
+                f"but received type {type(value)}"
+            )
+        if self.value_constraint is not None and not self.value_constraint(value):
+            raise ValueError(self.error_message_for_value_constraint)
 
 
 def _counting_option(name: str, infinite: bool = True, default_value: Any = None):
@@ -307,7 +307,7 @@ def update_options(
     The returned updated options contain shallow copy of original options.
     """
 
-    updated_options = {**original_options, **new_options}
+    updated_options = original_options | new_options
     # Ensure we update each namespace in "_metadata" independently.
     # "_metadata" is a dict like {namespace1: config1, namespace2: config2}
     if (

@@ -202,7 +202,7 @@ class Worker:
         pass
 
     def train(self, shard: ray.data.Dataset[int]) -> int:
-        for batch in shard.iter_torch_batches(batch_size=256):
+        for _ in shard.iter_torch_batches(batch_size=256):
             pass
         return shard.count()
 

@@ -62,9 +62,7 @@ class LogAgentV1Grpc(
                 f"Could not find log dir at path: {self._dashboard_agent.log_dir}"
                 "It is unexpected. Please report an issue to Ray Github."
             )
-        log_files = []
-        for p in path.glob(request.glob_filter):
-            log_files.append(p.name)
+        log_files = [p.name for p in path.glob(request.glob_filter)]
         return reporter_pb2.ListLogsReply(log_files=log_files)
 
     async def StreamLog(self, request, context):
@@ -77,7 +75,7 @@ class LogAgentV1Grpc(
         """
         # NOTE: If the client side connection is closed, this handler will
         # be automatically terminated.
-        lines = request.lines if request.lines else 1000
+        lines = request.lines or 1000
 
         filepath = f"{self._dashboard_agent.log_dir}/{request.log_file_name}"
         if "/" in request.log_file_name or not os.path.isfile(filepath):
@@ -99,7 +97,7 @@ class LogAgentV1Grpc(
                     bytes, end = tail(f, lines)
                     yield reporter_pb2.StreamLogReply(data=bytes + b"\n")
                 if request.keep_alive:
-                    interval = request.interval if request.interval else 1
+                    interval = request.interval or 1
                     f.seek(end)
                     while not context.done():
                         await asyncio.sleep(interval)

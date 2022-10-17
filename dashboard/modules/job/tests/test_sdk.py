@@ -138,10 +138,10 @@ def test_temporary_uri_reference(monkeypatch, expiration_s):
                 assert not check_internal_kv_gced()
                 wait_for_condition(check_internal_kv_gced, timeout=2 * expiration_s)
                 assert expiration_s < time.time() - start < 2 * expiration_s
-                print("Internal KV was GC'ed at time ", time.time() - start)
             else:
                 wait_for_condition(check_internal_kv_gced)
-                print("Internal KV was GC'ed at time ", time.time() - start)
+
+            print("Internal KV was GC'ed at time ", time.time() - start)
 
 
 def test_split_address():

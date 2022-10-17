@@ -34,13 +34,13 @@ class ImageModel:
     async def __call__(self, starlette_request: Request) -> Dict:
         image_payload_bytes = await starlette_request.body()
         pil_image = Image.open(BytesIO(image_payload_bytes))
-        print("[1/3] Parsed image data: {}".format(pil_image))
+        print(f"[1/3] Parsed image data: {pil_image}")
 
         pil_images = [pil_image]  # Our current batch size is one
         input_tensor = torch.cat(
             [self.preprocessor(i).unsqueeze(0) for i in pil_images]
         )
-        print("[2/3] Images transformed, tensor shape {}".format(input_tensor.shape))
+        print(f"[2/3] Images transformed, tensor shape {input_tensor.shape}")
 
         with torch.no_grad():
             output_tensor = self.model(input_tensor)

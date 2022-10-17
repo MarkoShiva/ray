@@ -65,7 +65,7 @@ def train_loop_per_worker(config):
     loss_fn = nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=lr)
 
-    for cur_epoch in range(epochs):
+    for _ in range(epochs):
         for batch in train_data.iter_torch_batches(
             batch_size=batch_size, dtypes=torch.float32
         ):

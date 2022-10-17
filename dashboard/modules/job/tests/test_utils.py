@@ -57,9 +57,9 @@ class TestIterLine:
 
         f = open(tmp, "w")
 
+        num_lines = 10
         # Write lines in batches of 10, check that we get them back in batches.
         for _ in range(100):
-            num_lines = 10
             for i in range(num_lines):
                 f.write(f"{i}\n")
             f.flush()
@@ -74,9 +74,9 @@ class TestIterLine:
 
         f = open(tmp, "w")
 
+        num_lines = 50
         # Write lines in batches of 50, check that we get them back in batches of 10.
         for _ in range(100):
-            num_lines = 50
             for i in range(num_lines):
                 f.write(f"{i}\n")
             f.flush()
@@ -115,9 +115,11 @@ class TestIterLine:
 
         first_nine_lines = [f"{i}\n" for i in range(9)]
         first_nine_lines_length = sum(len(line) for line in first_nine_lines)
-        assert next(it) == first_nine_lines + [
-            f"{'1234567890' * 2000}"[0:-first_nine_lines_length]
-        ]
+        assert next(it) == (
+            first_nine_lines
+            + [f"{'1234567890' * 2000}"[:-first_nine_lines_length]]
+        )
+
         # Remainder of last line
         assert next(it) == [f"{'1234567890' * 2000}"[-first_nine_lines_length:] + "\n"]
         assert next(it) is None

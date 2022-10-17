@@ -131,7 +131,7 @@ class FunctionActorManager:
             dis.dis(function_or_class, file=string_file, depth=2)
         else:
             dis.dis(function_or_class, file=string_file)
-        collision_identifier = function_or_class.__name__ + ":" + string_file.getvalue()
+        collision_identifier = f"{function_or_class.__name__}:{string_file.getvalue()}"
 
         # Return a hash of the identifier in case it is too large.
         return hashlib.sha1(collision_identifier.encode("utf-8")).digest()
@@ -318,14 +318,12 @@ class FunctionActorManager:
         # There's no need to load again
         if function_id in self._function_execution_info:
             return self._function_execution_info[function_id]
-        if self._worker.load_code_from_local:
-            # Load function from local code.
-            if not function_descriptor.is_actor_method():
-                # If the function is not able to be loaded,
-                # try to load it from GCS,
-                # even if load_code_from_local is set True
-                if self._load_function_from_local(function_descriptor) is True:
-                    return self._function_execution_info[function_id]
+        if (
+            self._worker.load_code_from_local
+            and not function_descriptor.is_actor_method()
+            and self._load_function_from_local(function_descriptor) is True
+        ):
+            return self._function_execution_info[function_id]
         # Load function from GCS.
         # Wait until the function to be executed has actually been
         # registered on this worker. We will push warnings to the user if
@@ -389,14 +387,13 @@ class FunctionActorManager:
                 if self._worker.actor_id.is_nil():
                     if function_descriptor.function_id in self._function_execution_info:
                         break
-                    else:
-                        key = make_function_table_key(
-                            b"RemoteFunction",
-                            job_id,
-                            function_descriptor.function_id.binary(),
-                        )
-                        if self.fetch_and_register_remote_function(key) is True:
-                            break
+                    key = make_function_table_key(
+                        b"RemoteFunction",
+                        job_id,
+                        function_descriptor.function_id.binary(),
+                    )
+                    if self.fetch_and_register_remote_function(key) is True:
+                        break
                 else:
                     assert not self._worker.actor_id.is_nil()
                     # Actor loading will happen when execute_task is called.
@@ -568,13 +565,12 @@ class FunctionActorManager:
 
         object = self.load_function_or_class_from_local(module_name, class_name)
 
-        if object is not None:
-            if isinstance(object, ray.actor.ActorClass):
-                return object.__ray_metadata__.modified_class
-            else:
-                return object
-        else:
+        if object is None:
             return None
+        if isinstance(object, ray.actor.ActorClass):
+            return object.__ray_metadata__.modified_class
+        else:
+            return object
 
     def _create_fake_actor_class(
         self, actor_class_name, actor_method_names, traceback_str
@@ -606,10 +602,7 @@ class FunctionActorManager:
         # Fetch raw data from GCS.
         vals = self._worker.gcs_client.internal_kv_get(key, KV_NAMESPACE_FUNCTION_TABLE)
         fields = ["job_id", "class_name", "module", "class", "actor_method_names"]
-        if vals is None:
-            vals = {}
-        else:
-            vals = pickle.loads(vals)
+        vals = {} if vals is None else pickle.loads(vals)
         (job_id_str, class_name, module, pickled_class, actor_method_names) = (
             vals.get(field) for field in fields
         )

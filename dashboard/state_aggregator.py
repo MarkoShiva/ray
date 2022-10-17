@@ -452,18 +452,14 @@ class StateAPIManager:
                 raise reply
 
             total_objects += reply.total
-            for core_worker_stat in reply.core_workers_stats:
-                # NOTE: Set preserving_proto_field_name=False here because
-                # `construct_memory_table` requires a dictionary that has
-                # modified protobuf name
-                # (e.g., workerId instead of worker_id) as a key.
-                worker_stats.append(
-                    self._message_to_dict(
-                        message=core_worker_stat,
-                        fields_to_decode=["object_id"],
-                        preserving_proto_field_name=False,
-                    )
+            worker_stats.extend(
+                self._message_to_dict(
+                    message=core_worker_stat,
+                    fields_to_decode=["object_id"],
+                    preserving_proto_field_name=False,
                 )
+                for core_worker_stat in reply.core_workers_stats
+            )
 
         partial_failure_warning = None
         if len(raylet_ids) > 0 and unresponsive_nodes > 0:

@@ -91,9 +91,8 @@ class GlobalState:
             actor_info = self.global_state_accessor.get_actor_info(actor_id)
             if actor_info is None:
                 return {}
-            else:
-                actor_table_data = gcs_utils.ActorTableData.FromString(actor_info)
-                return self._gen_actor_info(actor_table_data)
+            actor_table_data = gcs_utils.ActorTableData.FromString(actor_info)
+            return self._gen_actor_info(actor_table_data)
         else:
             actor_table = self.global_state_accessor.get_actor_table()
             results = {}
@@ -111,7 +110,7 @@ class GlobalState:
         Returns:
             Information from actor table.
         """
-        actor_info = {
+        return {
             "ActorID": binary_to_hex(actor_table_data.actor_id),
             "ActorClassName": actor_table_data.class_name,
             "IsDetached": actor_table_data.is_detached,
@@ -137,7 +136,6 @@ class GlobalState:
             "DeathCause": actor_table_data.death_cause,
             "Pid": actor_table_data.pid,
         }
-        return actor_info
 
     def node_table(self):
         """Fetch and parse the Gcs node info table.
@@ -167,10 +165,9 @@ class GlobalState:
             }
             node_info["alive"] = node_info["Alive"]
             node_info["Resources"] = (
-                {key: value for key, value in item.resources_total.items()}
-                if node_info["Alive"]
-                else {}
+                dict(item.resources_total.items()) if node_info["Alive"] else {}
             )
+
             results.append(node_info)
         return results
 
@@ -193,8 +190,7 @@ class GlobalState:
         results = []
         for i in range(len(job_table)):
             entry = gcs_utils.JobTableData.FromString(job_table[i])
-            job_info = {}
-            job_info["JobID"] = entry.job_id.hex()
+            job_info = {"JobID": entry.job_id.hex()}
             job_info["DriverIPAddress"] = entry.driver_ip_address
             job_info["DriverPid"] = entry.driver_pid
             job_info["Timestamp"] = entry.timestamp
@@ -254,11 +250,10 @@ class GlobalState:
         )
         if placement_group_info is None:
             return None
-        else:
-            placement_group_table_data = gcs_utils.PlacementGroupTableData.FromString(
-                placement_group_info
-            )
-            return self._gen_placement_group_info(placement_group_table_data)
+        placement_group_table_data = gcs_utils.PlacementGroupTableData.FromString(
+            placement_group_info
+        )
+        return self._gen_placement_group_info(placement_group_table_data)
 
     def placement_group_table(self, placement_group_id=None):
         self._check_connected()
@@ -272,11 +267,10 @@ class GlobalState:
             )
             if placement_group_info is None:
                 return {}
-            else:
-                placement_group_info = gcs_utils.PlacementGroupTableData.FromString(
-                    placement_group_info
-                )
-                return self._gen_placement_group_info(placement_group_info)
+            placement_group_info = gcs_utils.PlacementGroupTableData.FromString(
+                placement_group_info
+            )
+            return self._gen_placement_group_info(placement_group_info)
         else:
             placement_group_table = (
                 self.global_state_accessor.get_placement_group_table()
@@ -349,8 +343,7 @@ class GlobalState:
 
     def _seconds_to_microseconds(self, time_in_seconds):
         """A helper function for converting seconds to microseconds."""
-        time_in_microseconds = 10 ** 6 * time_in_seconds
-        return time_in_microseconds
+        return 10 ** 6 * time_in_seconds
 
     # Colors are specified at
     # https://github.com/catapult-project/catapult/blob/master/tracing/tracing/base/color_scheme.html.  # noqa: E501
@@ -489,11 +482,10 @@ class GlobalState:
                 "by setting RAY_PROFILING=1."
             )
 
-        if filename is not None:
-            with open(filename, "w") as outfile:
-                json.dump(all_events, outfile)
-        else:
+        if filename is None:
             return all_events
+        with open(filename, "w") as outfile:
+            json.dump(all_events, outfile)
 
     def chrome_tracing_object_transfer_dump(self, filename=None):
         """Return a list of transfer events that can viewed as a timeline.
@@ -513,11 +505,12 @@ class GlobalState:
         """
         self._check_connected()
 
-        node_id_to_address = {}
-        for node_info in self.node_table():
-            node_id_to_address[node_info["NodeID"]] = "{}:{}".format(
-                node_info["NodeManagerAddress"], node_info["ObjectManagerPort"]
-            )
+        node_id_to_address = {
+            node_info[
+                "NodeID"
+            ]: f'{node_info["NodeManagerAddress"]}:{node_info["ObjectManagerPort"]}'
+            for node_info in self.node_table()
+        }
 
         all_events = []
 
@@ -581,14 +574,10 @@ class GlobalState:
                     additional_event = new_event.copy()
                     additional_event["cname"] = "grey"
                     all_events.append(additional_event)
-                else:
-                    pass
-
-        if filename is not None:
-            with open(filename, "w") as outfile:
-                json.dump(all_events, outfile)
-        else:
+        if filename is None:
             return all_events
+        with open(filename, "w") as outfile:
+            json.dump(all_events, outfile)
 
     def workers(self):
         """Get a dictionary mapping worker ID to worker information."""
@@ -678,9 +667,7 @@ class GlobalState:
         for available_resource in all_available_resources:
             message = gcs_utils.AvailableResources.FromString(available_resource)
             # Calculate available resources for this node.
-            dynamic_resources = {}
-            for resource_id, capacity in message.resources_available.items():
-                dynamic_resources[resource_id] = capacity
+            dynamic_resources = dict(message.resources_available.items())
             # Update available resources for this node.
             node_id = ray._private.utils.binary_to_hex(message.node_id)
             available_resources_by_id[node_id] = dynamic_resources
@@ -804,9 +791,12 @@ def node_ids():
     """
     node_ids = []
     for node in nodes():
-        for k, v in node["Resources"].items():
-            if k.startswith(NODE_ID_PREFIX):
-                node_ids.append(k)
+        node_ids.extend(
+            k
+            for k, v in node["Resources"].items()
+            if k.startswith(NODE_ID_PREFIX)
+        )
+
     return node_ids
 
 

@@ -129,7 +129,7 @@ class RuntimeContext(object):
         ), f"This method is only available when the process is a\
                  worker. Current mode: {self.worker.mode}"
         task_id = self.worker.current_task_id
-        return task_id if not task_id.is_nil() else None
+        return None if task_id.is_nil() else task_id
 
     def get_task_id(self) -> Optional[str]:
         """Get current task ID for this worker or driver.
@@ -167,7 +167,7 @@ class RuntimeContext(object):
             )
             return None
         task_id = self.worker.current_task_id
-        return task_id.hex() if not task_id.is_nil() else None
+        return None if task_id.is_nil() else task_id.hex()
 
     @Deprecated(message="Use get_actor_id() instead")
     @property
@@ -186,7 +186,7 @@ class RuntimeContext(object):
         ), f"This method is only available when the process is a\
                  worker. Current mode: {self.worker.mode}"
         actor_id = self.worker.actor_id
-        return actor_id if not actor_id.is_nil() else None
+        return None if actor_id.is_nil() else actor_id
 
     def get_actor_id(self) -> Optional[str]:
         """Get the current actor ID in this worker.
@@ -207,7 +207,7 @@ class RuntimeContext(object):
             )
             return None
         actor_id = self.worker.actor_id
-        return actor_id.hex() if not actor_id.is_nil() else None
+        return None if actor_id.is_nil() else actor_id.hex()
 
     @property
     def namespace(self):
@@ -248,7 +248,7 @@ class RuntimeContext(object):
             The current placement group id in hex format of this worker.
         """
         pg_id = self.worker.placement_group_id
-        return pg_id.hex() if not pg_id.is_nil() else None
+        return None if pg_id.is_nil() else pg_id.hex()
 
     @property
     def should_capture_child_tasks_in_placement_group(self):
@@ -280,11 +280,10 @@ class RuntimeContext(object):
                  worker. Current mode: {self.worker.mode}"
         self.worker.check_connected()
         resource_id_map = self.worker.core_worker.resource_ids()
-        resource_map = {
+        return {
             res: sum(amt for _, amt in mapping)
             for res, mapping in resource_id_map.items()
         }
-        return resource_map
 
     def get_runtime_env_string(self):
         """Get the runtime env string used for the current driver or worker.

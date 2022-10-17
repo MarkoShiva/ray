@@ -45,7 +45,7 @@ if sys.platform == "win32":
         import win32api
         import win32con
         import win32job
-    except (ModuleNotFoundError, ImportError) as e:
+    except ImportError as e:
         win32api = None
         win32con = None
         win32job = None
@@ -107,10 +107,9 @@ class JobLogStorageClient:
         for lines in log_tail_iter:
             if lines is None:
                 break
-            else:
-                # log_tail_iter can return batches of lines at a time.
-                for line in lines:
-                    log_tail_deque.append(line)
+            # log_tail_iter can return batches of lines at a time.
+            for line in lines:
+                log_tail_deque.append(line)
 
         return "".join(log_tail_deque)[-self.MAX_LOG_SIZE :]
 
@@ -151,9 +150,10 @@ class JobSupervisor:
         self._driver_runtime_env = self._get_driver_runtime_env()
         self._entrypoint = entrypoint
 
-        # Default metadata if not passed by the user.
-        self._metadata = {JOB_ID_METADATA_KEY: job_id, JOB_NAME_METADATA_KEY: job_id}
-        self._metadata.update(user_metadata)
+        self._metadata = {
+            JOB_ID_METADATA_KEY: job_id,
+            JOB_NAME_METADATA_KEY: job_id,
+        } | user_metadata
 
         # fire and forget call from outer job manager to this actor
         self._stop_event = asyncio.Event()
@@ -221,7 +221,7 @@ class JobSupervisor:
                     stderr=subprocess.DEVNULL,
                 )
 
-            elif sys.platform == "win32" and win32api:
+            elif win32api:
                 # Create a JobObject to which the child process (and its children)
                 # will be connected. This job object can be used to kill the child
                 # processes explicitly or when the jobObject gets deleted during
@@ -426,14 +426,14 @@ class JobManager:
         if job_supervisor is None:
             job_supervisor = self._get_actor_for_job(job_id)
 
-            if job_supervisor is None:
-                logger.error(f"Failed to get job supervisor for job {job_id}.")
-                await self._job_info_client.put_status(
-                    job_id,
-                    JobStatus.FAILED,
-                    message="Unexpected error occurred: Failed to get job supervisor.",
-                )
-                is_alive = False
+        if job_supervisor is None:
+            logger.error(f"Failed to get job supervisor for job {job_id}.")
+            await self._job_info_client.put_status(
+                job_id,
+                JobStatus.FAILED,
+                message="Unexpected error occurred: Failed to get job supervisor.",
+            )
+            is_alive = False
 
         while is_alive:
             try:
@@ -479,8 +479,7 @@ class JobManager:
                 for key in node["Resources"].keys():
                     if key.startswith("node:"):
                         return key
-        else:
-            raise ValueError("Cannot find the node dictionary for current node.")
+        raise ValueError("Cannot find the node dictionary for current node.")
 
     def _handle_supervisor_startup(self, job_id: str, result: Optional[Exception]):
         """Handle the result of starting a job supervisor actor.
@@ -612,13 +611,12 @@ class JobManager:
         Returns whether or not the job was running.
         """
         job_supervisor_actor = self._get_actor_for_job(job_id)
-        if job_supervisor_actor is not None:
-            # Actor is still alive, signal it to stop the driver, fire and
-            # forget
-            job_supervisor_actor.stop.remote()
-            return True
-        else:
+        if job_supervisor_actor is None:
             return False
+        # Actor is still alive, signal it to stop the driver, fire and
+        # forget
+        job_supervisor_actor.stop.remote()
+        return True
 
     async def get_job_status(self, job_id: str) -> Optional[JobStatus]:
         """Get latest status of a job."""

@@ -106,9 +106,8 @@ class NodeHead(dashboard_utils.DashboardHeadModule):
         if change.new:
             # TODO(fyrestone): Handle exceptions.
             node_id, node_info = change.new
-            address = "{}:{}".format(
-                node_info["nodeManagerAddress"], int(node_info["nodeManagerPort"])
-            )
+            address = f'{node_info["nodeManagerAddress"]}:{int(node_info["nodeManagerPort"])}'
+
             options = ray_constants.GLOBAL_GRPC_OPTIONS
             channel = ray._private.utils.init_grpc_channel(
                 address, options, asynchronous=True
@@ -174,11 +173,9 @@ class NodeHead(dashboard_utils.DashboardHeadModule):
                 agents = dict(DataSource.agents)
                 for node_id in alive_node_ids:
                     key = f"{dashboard_consts.DASHBOARD_AGENT_PORT_PREFIX}" f"{node_id}"
-                    # TODO: Use async version if performance is an issue
-                    agent_port = ray.experimental.internal_kv._internal_kv_get(
+                    if agent_port := ray.experimental.internal_kv._internal_kv_get(
                         key, namespace=ray_constants.KV_NAMESPACE_DASHBOARD
-                    )
-                    if agent_port:
+                    ):
                         agents[node_id] = json.loads(agent_port)
                 for node_id in agents.keys() - set(alive_node_ids):
                     agents.pop(node_id, None)
@@ -240,10 +237,12 @@ class NodeHead(dashboard_utils.DashboardHeadModule):
                 clients=all_node_details,
             )
         elif view is not None and view.lower() == "hostNameList".lower():
-            alive_hostnames = set()
-            for node in DataSource.nodes.values():
-                if node["state"] == "ALIVE":
-                    alive_hostnames.add(node["nodeManagerHostname"])
+            alive_hostnames = {
+                node["nodeManagerHostname"]
+                for node in DataSource.nodes.values()
+                if node["state"] == "ALIVE"
+            }
+
             return dashboard_optional_utils.rest_response(
                 success=True,
                 message="Node hostname list fetched.",
@@ -301,7 +300,7 @@ class NodeHead(dashboard_utils.DashboardHeadModule):
         pid = str(req.query.get("pid", ""))
         node_errors = DataSource.ip_and_pid_to_errors.get(ip, {})
         if pid:
-            node_errors = {str(pid): node_errors.get(pid, [])}
+            node_errors = {pid: node_errors.get(pid, [])}
         return dashboard_optional_utils.rest_response(
             success=True, message="Fetched errors.", errors=node_errors
         )
@@ -368,8 +367,8 @@ class NodeHead(dashboard_utils.DashboardHeadModule):
             message = re.sub(r"\x1b\[\d+m", "", message)
             match = re.search(r"\(pid=(\d+), ip=(.*?)\)", message)
             if match:
-                pid = match.group(1)
-                ip = match.group(2)
+                pid = match[1]
+                ip = match[2]
                 errs_for_ip = dict(DataSource.ip_and_pid_to_errors.get(ip, {}))
                 pid_errors = list(errs_for_ip.get(pid, []))
                 pid_errors.append(

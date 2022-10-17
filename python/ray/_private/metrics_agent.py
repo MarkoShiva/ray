@@ -299,11 +299,9 @@ class MetricsAgent:
                 elapsed = time.monotonic() - state.last_reported_time
                 if elapsed > self.worker_timeout_s:
                     logger.info(
-                        "Metrics from a worker ({}) is cleaned up due to "
-                        "timeout. Time since last report {}s".format(
-                            worker_id_hex, elapsed
-                        )
+                        f"Metrics from a worker ({worker_id_hex}) is cleaned up due to timeout. Time since last report {elapsed}s"
                     )
+
                     worker_ids_to_clean.append(worker_id_hex)
 
             for worker_id in worker_ids_to_clean:
@@ -362,16 +360,19 @@ class PrometheusServiceDiscoveryWriter(threading.Thread):
         """Return the content for Prometheus service discovery."""
         nodes = ray.nodes()
         metrics_export_addresses = [
-            "{}:{}".format(node["NodeManagerAddress"], node["MetricsExportPort"])
+            f'{node["NodeManagerAddress"]}:{node["MetricsExportPort"]}'
             for node in nodes
             if node["alive"] is True
         ]
+
         gcs_client = GcsClient(address=self.gcs_address)
-        autoscaler_addr = gcs_client.internal_kv_get(b"AutoscalerMetricsAddress", None)
-        if autoscaler_addr:
+        if autoscaler_addr := gcs_client.internal_kv_get(
+            b"AutoscalerMetricsAddress", None
+        ):
             metrics_export_addresses.append(autoscaler_addr.decode("utf-8"))
-        dashboard_addr = gcs_client.internal_kv_get(b"DashboardMetricsAddress", None)
-        if dashboard_addr:
+        if dashboard_addr := gcs_client.internal_kv_get(
+            b"DashboardMetricsAddress", None
+        ):
             metrics_export_addresses.append(dashboard_addr.decode("utf-8"))
         return json.dumps(
             [{"labels": {"job": "ray"}, "targets": metrics_export_addresses}]
@@ -398,9 +399,7 @@ class PrometheusServiceDiscoveryWriter(threading.Thread):
     def get_temp_file_name(self):
         return os.path.join(
             self.temp_dir,
-            "{}_{}".format(
-                "tmp", ray._private.ray_constants.PROMETHEUS_SERVICE_DISCOVERY_FILE
-            ),
+            f"tmp_{ray._private.ray_constants.PROMETHEUS_SERVICE_DISCOVERY_FILE}",
         )
 
     def run(self):
@@ -410,9 +409,9 @@ class PrometheusServiceDiscoveryWriter(threading.Thread):
                 self.write()
             except Exception as e:
                 logger.warning(
-                    "Writing a service discovery file, {},"
-                    "failed.".format(self.get_target_file_name())
+                    f"Writing a service discovery file, {self.get_target_file_name()},failed."
                 )
+
                 logger.warning(traceback.format_exc())
                 logger.warning(f"Error message: {e}")
             time.sleep(self.default_service_discovery_flush_period)

@@ -236,11 +236,10 @@ class SerializationContext:
             return RayError.from_ray_exception(
                 ray_error_info.actor_died_error.creation_task_failure_context
             )
-        else:
-            assert ray_error_info.actor_died_error.HasField("actor_died_error_context")
-            return RayActorError(
-                cause=ray_error_info.actor_died_error.actor_died_error_context
-            )
+        assert ray_error_info.actor_died_error.HasField("actor_died_error_context")
+        return RayActorError(
+            cause=ray_error_info.actor_died_error.actor_died_error_context
+        )
 
     def _deserialize_object(self, data, metadata, object_ref):
         if metadata:
@@ -252,9 +251,7 @@ class SerializationContext:
                 return self._deserialize_msgpack_data(data, metadata_fields)
             # Check if the object should be returned as raw bytes.
             if metadata_fields[0] == ray_constants.OBJECT_METADATA_TYPE_RAW:
-                if data is None:
-                    return b""
-                return data.to_pybytes()
+                return b"" if data is None else data.to_pybytes()
             elif metadata_fields[0] == ray_constants.OBJECT_METADATA_TYPE_ACTOR_HANDLE:
                 obj = self._deserialize_msgpack_data(data, metadata_fields)
                 return _actor_handle_deserializer(obj)
@@ -345,7 +342,7 @@ class SerializationContext:
                 error_info = self._deserialize_error_info(data, metadata_fields)
                 return ActorUnschedulableError(error_info.error_message)
             else:
-                return RaySystemError("Unrecognized error type " + str(error_type))
+                return RaySystemError(f"Unrecognized error type {error_type}")
         elif data:
             raise ValueError("non-null object should always have metadata")
         else:

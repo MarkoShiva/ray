@@ -72,7 +72,7 @@ from ray.serve.handle import RayServeDeploymentHandle, RayServeSyncHandle
 @serve.deployment
 class Model:
     def __call__(self, inp):
-        return "hello " + inp
+        return f"hello {inp}"
 
 
 @serve.deployment

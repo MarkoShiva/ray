@@ -197,10 +197,10 @@ class DashboardHead:
         # Verify modules are loaded as expected.
         loaded_modules = {type(m).__name__ for m in modules}
         if loaded_modules != modules_to_load:
-            assert False, (
-                "Actual loaded modules, {}, doesn't match the requested modules "
-                "to load, {}".format(loaded_modules, modules_to_load)
-            )
+            assert (
+                False
+            ), f"Actual loaded modules, {loaded_modules}, doesn't match the requested modules to load, {modules_to_load}"
+
 
         logger.info("Loaded %d modules. %s", len(modules), modules)
         return modules

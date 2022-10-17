@@ -8,7 +8,7 @@ import starlette.requests
 @serve.deployment
 class Doubler:
     def double(self, s: str):
-        return s + " " + s
+        return f"{s} {s}"
 
 
 @serve.deployment

@@ -65,7 +65,7 @@ def make_and_upload_dataset(dir_path):
         )
 
         # turn into dataframe with column names
-        col_names = ["feature_%0d" % i for i in range(1, d + 1, 1)]
+        col_names = ["feature_%0d" % i for i in range(1, d + 1)]
         df = pd.DataFrame(X)
         df.columns = col_names
 

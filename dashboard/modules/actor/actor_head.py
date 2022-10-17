@@ -94,9 +94,8 @@ class ActorHead(dashboard_utils.DashboardHeadModule):
         if change.new:
             # TODO(fyrestone): Handle exceptions.
             node_id, node_info = change.new
-            address = "{}:{}".format(
-                node_info["nodeManagerAddress"], int(node_info["nodeManagerPort"])
-            )
+            address = f'{node_info["nodeManagerAddress"]}:{int(node_info["nodeManagerPort"])}'
+
             options = ray_constants.GLOBAL_GRPC_OPTIONS
             channel = ray._private.utils.init_grpc_channel(
                 address, options, asynchronous=True
@@ -206,8 +205,7 @@ class ActorHead(dashboard_utils.DashboardHeadModule):
                             actor = DataSource.actors.pop(actor_id)
                             job_id = actor["jobId"]
                             del DataSource.job_actors[job_id][actor_id]
-                            node_id = actor["address"].get("rayletId")
-                            if node_id:
+                            if node_id := actor["address"].get("rayletId"):
                                 del DataSource.node_actors[node_id][actor_id]
                 await asyncio.sleep(ACTOR_CLEANUP_FREQUENCY)
             except Exception:

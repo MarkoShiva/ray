@@ -161,7 +161,7 @@ class HttpServerDashboardHead:
             except OSError as e:
                 last_ex = e
                 self.http_port += 1
-                logger.warning("Try to use port %s: %s", self.http_port, e)
+                logger.warning("Try to use port %s: %s", self.http_port, last_ex)
         else:
             raise Exception(
                 f"Failed to find a valid port for dashboard after "
@@ -192,10 +192,9 @@ class HttpServerDashboardHead:
         if prometheus_client:
             try:
                 logger.info(
-                    "Starting dashboard metrics server on port {}".format(
-                        DASHBOARD_METRIC_PORT
-                    )
+                    f"Starting dashboard metrics server on port {DASHBOARD_METRIC_PORT}"
                 )
+
                 kwargs = (
                     {"addr": "127.0.0.1"} if self.head_node_ip == "127.0.0.1" else {}
                 )
@@ -208,7 +207,7 @@ class HttpServerDashboardHead:
                 logger.exception(
                     "An exception occurred while starting the metrics server."
                 )
-        elif not prometheus_client:
+        else:
             logger.warning(
                 "`prometheus_client` not found, so metrics will not be exported."
             )

@@ -50,18 +50,11 @@ def get_store_stats(state, node_manager_address=None, node_manager_port=None):
     # We can ask any Raylet for the global memory info, that Raylet internally
     # asks all nodes in the cluster for memory stats.
     if node_manager_address is None or node_manager_port is None:
-        # We should ask for a raylet that is alive.
-        raylet = None
-        for node in state.node_table():
-            if node["Alive"]:
-                raylet = node
-                break
+        raylet = next((node for node in state.node_table() if node["Alive"]), None)
         assert raylet is not None, "Every raylet is dead"
-        raylet_address = "{}:{}".format(
-            raylet["NodeManagerAddress"], raylet["NodeManagerPort"]
-        )
+        raylet_address = f'{raylet["NodeManagerAddress"]}:{raylet["NodeManagerPort"]}'
     else:
-        raylet_address = "{}:{}".format(node_manager_address, node_manager_port)
+        raylet_address = f"{node_manager_address}:{node_manager_port}"
 
     channel = utils.init_grpc_channel(
         raylet_address,
@@ -88,7 +81,7 @@ def node_stats(
 
     # We can ask any Raylet for the global memory info.
     assert node_manager_address is not None and node_manager_port is not None
-    raylet_address = "{}:{}".format(node_manager_address, node_manager_port)
+    raylet_address = f"{node_manager_address}:{node_manager_port}"
     channel = utils.init_grpc_channel(
         raylet_address,
         options=[
@@ -98,69 +91,33 @@ def node_stats(
     )
 
     stub = node_manager_pb2_grpc.NodeManagerServiceStub(channel)
-    node_stats = stub.GetNodeStats(
-        node_manager_pb2.GetNodeStatsRequest(include_memory_info=include_memory_info),
+    return stub.GetNodeStats(
+        node_manager_pb2.GetNodeStatsRequest(
+            include_memory_info=include_memory_info
+        ),
         timeout=30.0,
     )
-    return node_stats
 
 
 def store_stats_summary(reply):
     """Returns formatted string describing object store stats in all nodes."""
-    store_summary = "--- Aggregate object store stats across all nodes ---\n"
-    # TODO(ekl) it would be nice if we could provide a full memory usage
-    # breakdown by type (e.g., pinned by worker, primary, etc.)
-    store_summary += (
-        "Plasma memory usage {} MiB, {} objects, {}% full, {}% "
-        "needed\n".format(
-            int(reply.store_stats.object_store_bytes_used / (1024 * 1024)),
-            reply.store_stats.num_local_objects,
-            round(
-                100
-                * reply.store_stats.object_store_bytes_used
-                / reply.store_stats.object_store_bytes_avail,
-                2,
-            ),
-            round(
-                100
-                * reply.store_stats.object_store_bytes_primary_copy
-                / reply.store_stats.object_store_bytes_avail,
-                2,
-            ),
-        )
+    store_summary = (
+        "--- Aggregate object store stats across all nodes ---\n"
+        + f"Plasma memory usage {int(reply.store_stats.object_store_bytes_used / (1024 * 1024))} MiB, {reply.store_stats.num_local_objects} objects, {round(100 * reply.store_stats.object_store_bytes_used / reply.store_stats.object_store_bytes_avail, 2)}% full, {round(100 * reply.store_stats.object_store_bytes_primary_copy / reply.store_stats.object_store_bytes_avail, 2)}% needed\n"
     )
+
     if reply.store_stats.object_store_bytes_fallback > 0:
-        store_summary += "Plasma filesystem mmap usage: {} MiB\n".format(
-            int(reply.store_stats.object_store_bytes_fallback / (1024 * 1024))
-        )
+        store_summary += f"Plasma filesystem mmap usage: {int(reply.store_stats.object_store_bytes_fallback / (1024 * 1024))} MiB\n"
+
     if reply.store_stats.spill_time_total_s > 0:
-        store_summary += (
-            "Spilled {} MiB, {} objects, avg write throughput {} MiB/s\n".format(
-                int(reply.store_stats.spilled_bytes_total / (1024 * 1024)),
-                reply.store_stats.spilled_objects_total,
-                int(
-                    reply.store_stats.spilled_bytes_total
-                    / (1024 * 1024)
-                    / reply.store_stats.spill_time_total_s
-                ),
-            )
-        )
+        store_summary += f"Spilled {int(reply.store_stats.spilled_bytes_total / (1024 * 1024))} MiB, {reply.store_stats.spilled_objects_total} objects, avg write throughput {int(reply.store_stats.spilled_bytes_total / (1024 * 1024) / reply.store_stats.spill_time_total_s)} MiB/s\n"
+
     if reply.store_stats.restore_time_total_s > 0:
-        store_summary += (
-            "Restored {} MiB, {} objects, avg read throughput {} MiB/s\n".format(
-                int(reply.store_stats.restored_bytes_total / (1024 * 1024)),
-                reply.store_stats.restored_objects_total,
-                int(
-                    reply.store_stats.restored_bytes_total
-                    / (1024 * 1024)
-                    / reply.store_stats.restore_time_total_s
-                ),
-            )
-        )
+        store_summary += f"Restored {int(reply.store_stats.restored_bytes_total / (1024 * 1024))} MiB, {reply.store_stats.restored_objects_total} objects, avg read throughput {int(reply.store_stats.restored_bytes_total / (1024 * 1024) / reply.store_stats.restore_time_total_s)} MiB/s\n"
+
     if reply.store_stats.consumed_bytes > 0:
-        store_summary += "Objects consumed by Ray tasks: {} MiB.\n".format(
-            int(reply.store_stats.consumed_bytes / (1024 * 1024))
-        )
+        store_summary += f"Objects consumed by Ray tasks: {int(reply.store_stats.consumed_bytes / (1024 * 1024))} MiB.\n"
+
     if reply.store_stats.object_pulls_queued:
         store_summary += "Object fetches queued, waiting for available memory."
 
@@ -196,21 +153,19 @@ def free(object_refs: list, local_only: bool = False):
         object_refs = [object_refs]
 
     if not isinstance(object_refs, list):
-        raise TypeError(
-            "free() expects a list of ObjectRef, got {}".format(type(object_refs))
-        )
+        raise TypeError(f"free() expects a list of ObjectRef, got {type(object_refs)}")
 
     # Make sure that the values are object refs.
     for object_ref in object_refs:
         if not isinstance(object_ref, ray.ObjectRef):
             raise TypeError(
-                "Attempting to call `free` on the value {}, "
-                "which is not an ray.ObjectRef.".format(object_ref)
+                f"Attempting to call `free` on the value {object_ref}, which is not an ray.ObjectRef."
             )
+
 
     worker.check_connected()
     with profiling.profile("ray.free"):
-        if len(object_refs) == 0:
+        if not object_refs:
             return
 
         worker.core_worker.free_objects(object_refs, local_only)

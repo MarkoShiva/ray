@@ -179,9 +179,7 @@ class StateHead(dashboard_utils.DashboardHeadModule, RateLimitedModule):
         filter_predicates = req.query.getall("filter_predicates", [])
         filter_values = req.query.getall("filter_values", [])
         assert len(filter_keys) == len(filter_values)
-        filters = []
-        for key, predicate, val in zip(filter_keys, filter_predicates, filter_values):
-            filters.append((key, predicate, val))
+        filters = list(zip(filter_keys, filter_predicates, filter_values))
         detail = convert_string_to_type(req.query.get("detail", False), bool)
 
         return ListApiOptions(

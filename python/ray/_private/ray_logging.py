@@ -166,10 +166,7 @@ class StandardFdRedirectionRotatingFileHandler(RotatingFileHandler):
         self.switch_os_fd()
 
     def get_original_stream(self):
-        if self.is_for_stdout:
-            return sys.stdout
-        else:
-            return sys.stderr
+        return sys.stdout if self.is_for_stdout else sys.stderr
 
     def switch_os_fd(self):
         # Old fd will automatically closed by dup2 when necessary.

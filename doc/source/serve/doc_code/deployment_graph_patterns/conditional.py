@@ -19,10 +19,7 @@ class Model:
 
 @serve.deployment
 def combine(value1: int, value2: int, operation: str) -> int:
-    if operation == "sum":
-        return sum([value1, value2])
-    else:
-        return max([value1, value2])
+    return sum([value1, value2]) if operation == "sum" else max([value1, value2])
 
 
 model1 = Model.bind(0)

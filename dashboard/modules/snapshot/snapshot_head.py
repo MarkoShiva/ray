@@ -71,11 +71,14 @@ class RayActivityResponse(BaseModel, extra=Extra.allow):
 
     @validator("reason", always=True)
     def reason_required(cls, v, values, **kwargs):
-        if "is_active" in values and values["is_active"] != RayActivityStatus.INACTIVE:
-            if v is None:
-                raise ValueError(
-                    'Reason is required if is_active is "active" or "error"'
-                )
+        if (
+            "is_active" in values
+            and values["is_active"] != RayActivityStatus.INACTIVE
+            and v is None
+        ):
+            raise ValueError(
+                'Reason is required if is_active is "active" or "error"'
+            )
         return v
 
 
@@ -104,8 +107,8 @@ class APIHead(dashboard_utils.DashboardHeadModule):
 
         request = gcs_service_pb2.KillActorViaGcsRequest()
         request.actor_id = bytes.fromhex(actor_id)
-        request.force_kill = force_kill
         request.no_restart = no_restart
+        request.force_kill = force_kill
         await self._gcs_actor_info_stub.KillActorViaGcs(
             request, timeout=SNAPSHOT_API_TIMEOUT_SECONDS
         )
@@ -113,9 +116,9 @@ class APIHead(dashboard_utils.DashboardHeadModule):
         message = (
             f"Force killed actor with id {actor_id}"
             if force_kill
-            else f"Requested actor with id {actor_id} to terminate. "
-            + "It will exit once running tasks complete"
+            else f"Requested actor with id {actor_id} to terminate. It will exit once running tasks complete"
         )
+
 
         return dashboard_optional_utils.rest_response(success=True, message=message)
 
@@ -263,10 +266,9 @@ class APIHead(dashboard_utils.DashboardHeadModule):
                 if num_active_drivers
                 else None,
                 timestamp=current_timestamp,
-                # If latest_job_end_time == 0, no jobs have finished yet so don't
-                # populate last_activity_at
-                last_activity_at=latest_job_end_time if latest_job_end_time else None,
+                last_activity_at=latest_job_end_time or None,
             )
+
         except Exception as e:
             logger.exception("Failed to get activity status of Ray drivers.")
             return RayActivityResponse(
@@ -367,18 +369,21 @@ class APIHead(dashboard_utils.DashboardHeadModule):
                 "current_raylet_id": actor_table_entry.address.raylet_id.hex(),
                 "ip_address": actor_table_entry.address.ip_address,
                 "port": actor_table_entry.address.port,
-                "metadata": dict(),
+                "metadata": {},
             }
+
             actors[actor_id] = entry
 
             deployments = await self.get_serve_info()
             for _, deployment_info in deployments.items():
                 for replica_actor_id, actor_info in deployment_info["actors"].items():
                     if replica_actor_id in actors:
-                        serve_metadata = dict()
-                        serve_metadata["replica_tag"] = actor_info["replica_tag"]
-                        serve_metadata["deployment_name"] = deployment_info["name"]
-                        serve_metadata["version"] = actor_info["version"]
+                        serve_metadata = {
+                            "replica_tag": actor_info["replica_tag"],
+                            "deployment_name": deployment_info["name"],
+                            "version": actor_info["version"],
+                        }
+
                         actors[replica_actor_id]["metadata"]["serve"] = serve_metadata
         return actors
 

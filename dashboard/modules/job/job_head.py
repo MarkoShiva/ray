@@ -113,8 +113,6 @@ class JobAgentSubmissionClient:
                 yield msg.data
             elif msg.type == aiohttp.WSMsgType.CLOSED:
                 break
-            elif msg.type == aiohttp.WSMsgType.ERROR:
-                pass
 
     async def close(self, ignore_error=True):
         try:
@@ -162,13 +160,14 @@ class JobHead(dashboard_utils.DashboardHeadModule):
                 status=aiohttp.web.HTTPInternalServerError.status_code,
             )
 
-        if not package_exists(package_uri):
-            return Response(
+        return (
+            Response()
+            if package_exists(package_uri)
+            else Response(
                 text=f"Package {package_uri} does not exist",
                 status=aiohttp.web.HTTPNotFound.status_code,
             )
-
-        return Response()
+        )
 
     @routes.put("/api/packages/{protocol}/{package_name}")
     @optional_utils.init_ray_and_catch_exceptions()
@@ -265,15 +264,16 @@ class JobHead(dashboard_utils.DashboardHeadModule):
         job = await find_job_by_ids(
             self._dashboard_head.gcs_aio_client, self._job_manager, job_or_submission_id
         )
-        if not job:
-            return Response(
+        return (
+            Response(
+                text=json.dumps(job.dict()),
+                content_type="application/json",
+            )
+            if job
+            else Response(
                 text=f"Job {job_or_submission_id} does not exist",
                 status=aiohttp.web.HTTPNotFound.status_code,
             )
-
-        return Response(
-            text=json.dumps(job.dict()),
-            content_type="application/json",
         )
 
     @routes.get("/api/jobs/")

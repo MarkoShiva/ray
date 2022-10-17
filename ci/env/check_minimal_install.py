@@ -32,13 +32,10 @@ def assert_packages_not_installed(blacklist: List[str]):
 
     installed_packages = [p.split("==")[0].split(" @ ")[0] for p in freeze.freeze()]
 
-    assert not any(p in installed_packages for p in blacklist), (
-        f"Found blacklisted packages in installed python packages: "
-        f"{[p for p in blacklist if p in installed_packages]}. "
-        f"Minimal dependency tests could be tainted by this. "
-        f"Check the install logs and primary dependencies if any of these "
-        f"packages were installed as part of another install step."
-    )
+    assert all(
+        p not in installed_packages for p in blacklist
+    ), f"Found blacklisted packages in installed python packages: {[p for p in blacklist if p in installed_packages]}. Minimal dependency tests could be tainted by this. Check the install logs and primary dependencies if any of these packages were installed as part of another install step."
+
 
     print(
         f"Confirmed that blacklisted packages are not installed in "

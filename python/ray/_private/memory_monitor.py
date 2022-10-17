@@ -23,10 +23,7 @@ def get_rss(memory_info):
 def get_shared(virtual_memory):
     """Get the estimated shared memory usage from psutil virtual mem info."""
     # OSX doesn't have the shared attribute
-    if hasattr(virtual_memory, "shared"):
-        return virtual_memory.shared
-    else:
-        return 0
+    return virtual_memory.shared if hasattr(virtual_memory, "shared") else 0
 
 
 def get_top_n_memory_usage(n: int = 10):
@@ -61,9 +58,8 @@ def get_top_n_memory_usage(n: int = 10):
             continue
     proc_str = "PID\tMEM\tCOMMAND"
     for rss, pid, cmdline in sorted(proc_stats, reverse=True)[:n]:
-        proc_str += "\n{}\t{}GiB\t{}".format(
-            pid, round(rss / (1024 ** 3), 2), " ".join(cmdline)[:100].strip()
-        )
+        proc_str += f'\n{pid}\t{round(rss / 1024**3, 2)}GiB\t{" ".join(cmdline)[:100].strip()}'
+
     return proc_str
 
 
@@ -75,13 +71,15 @@ class RayOutOfMemoryError(Exception):
     def get_message(used_gb, total_gb, threshold):
         proc_str = get_top_n_memory_usage(n=10)
         return (
-            "More than {}% of the memory on ".format(int(100 * threshold))
-            + "node {} is used ({} / {} GB). ".format(
-                platform.node(), round(used_gb, 2), round(total_gb, 2)
-            )
-            + f"The top 10 memory consumers are:\n\n{proc_str}"
-            + "\n\nIn addition, up to {} GiB of shared memory is ".format(
-                round(get_shared(psutil.virtual_memory()) / (1024 ** 3), 2)
+            (
+                (
+                    (
+                        f"More than {int(100 * threshold)}% of the memory on "
+                        + f"node {platform.node()} is used ({round(used_gb, 2)} / {round(total_gb, 2)} GB). "
+                    )
+                    + f"The top 10 memory consumers are:\n\n{proc_str}"
+                )
+                + f"\n\nIn addition, up to {round(get_shared(psutil.virtual_memory()) / 1024**3, 2)} GiB of shared memory is "
             )
             + "currently being used by the Ray object store.\n---\n"
             "--- Tip: Use the `ray memory` command to list active "
@@ -141,7 +139,7 @@ class MemoryMonitor:
                 used_gb = int(f.read()) / (1024 ** 3)
             # Exclude the page cache
             with open("/sys/fs/cgroup/memory/memory.stat", "r") as f:
-                for line in f.readlines():
+                for line in f:
                     if line.split(" ")[0] == "cache":
                         used_gb = used_gb - int(line.split(" ")[1]) / (1024 ** 3)
             assert used_gb >= 0

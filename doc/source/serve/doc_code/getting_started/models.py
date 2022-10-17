@@ -14,10 +14,7 @@ class Translator:
         # Run inference
         model_output = self.model(text)
 
-        # Post-process output to return only the translation text
-        translation = model_output[0]["translation_text"]
-
-        return translation
+        return model_output[0]["translation_text"]
 
 
 translator = Translator()
@@ -44,10 +41,7 @@ class Summarizer:
         # Run inference
         model_output = self.model(text, min_length=5, max_length=15)
 
-        # Post-process output to return only the summary text
-        summary = model_output[0]["summary_text"]
-
-        return summary
+        return model_output[0]["summary_text"]
 
 
 summarizer = Summarizer()

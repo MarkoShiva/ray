@@ -96,8 +96,9 @@ def _configure_system():
     # libraries such as _streaming.so. See BUILD.bazel:_raylet
     python_shared_lib_suffix = ".so" if sys.platform != "win32" else ".pyd"
     so_path = os.path.join(
-        os.path.dirname(__file__), "_raylet" + python_shared_lib_suffix
+        os.path.dirname(__file__), f"_raylet{python_shared_lib_suffix}"
     )
+
     if os.path.exists(so_path):
         import ctypes
         from ctypes import CDLL

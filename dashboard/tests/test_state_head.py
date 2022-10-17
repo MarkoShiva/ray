@@ -42,10 +42,7 @@ async def test_max_concurrent_in_progress_functions(extra_req_num):
     res_arr = await asyncio.gather(
         *[a.fn1() if i % 2 == 0 else a.fn2() for i in range(max_req + extra_req_num)]
     )
-    fail_cnt = 0
-    for ok in res_arr:
-        fail_cnt += 0 if ok else 1
-
+    fail_cnt = sum(0 if ok else 1 for ok in res_arr)
     expected_fail_cnt = max(0, extra_req_num)
     assert fail_cnt == expected_fail_cnt, (
         f"{expected_fail_cnt} out of {max_req + extra_req_num} "
@@ -79,11 +76,7 @@ async def test_max_concurrent_with_exceptions(failures):
 
     expected_num_failure = sum(failures)
 
-    actual_num_failure = 0
-    for res in res_arr:
-        if isinstance(res, FailedCallError):
-            actual_num_failure += 1
-
+    actual_num_failure = sum(isinstance(res, FailedCallError) for res in res_arr)
     assert expected_num_failure == actual_num_failure, "All failures should be captured"
     assert a.num_call_ == 0, "Failure should decrement the counter correctly"
 

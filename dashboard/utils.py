@@ -114,9 +114,7 @@ def get_all_modules(module_type):
 
     should_only_load_minimal_modules = not check_dashboard_dependencies_installed()
 
-    for module_loader, name, ispkg in pkgutil.walk_packages(
-        ray.dashboard.modules.__path__, ray.dashboard.modules.__name__ + "."
-    ):
+    for module_loader, name, ispkg in pkgutil.walk_packages(ray.dashboard.modules.__path__, f"{ray.dashboard.modules.__name__}."):
         try:
             importlib.import_module(name)
         except ModuleNotFoundError as e:
@@ -211,10 +209,7 @@ def message_to_dict(message, decode_keys=None, **kwargs):
                         new_list.append(i)
                 d[k] = new_list
             else:
-                if k in decode_keys:
-                    d[k] = binary_to_hex(b64decode(v))
-                else:
-                    d[k] = v
+                d[k] = binary_to_hex(b64decode(v)) if k in decode_keys else v
         return d
 
     if decode_keys:
@@ -321,9 +316,8 @@ def make_immutable(value, strict=True):
         return ImmutableDict(value)
     if value_type is list:
         return ImmutableList(value)
-    if strict:
-        if value_type not in _json_compatible_types:
-            raise TypeError("Type {} can't be immutable.".format(value_type))
+    if strict and value_type not in _json_compatible_types:
+        raise TypeError(f"Type {value_type} can't be immutable.")
     return value
 
 
@@ -377,7 +371,7 @@ class ImmutableList(Immutable, Sequence):
         return len(self._list)
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, list.__repr__(self._list))
+        return f"{self.__class__.__name__}({list.__repr__(self._list)})"
 
 
 class ImmutableDict(Immutable, Mapping):
@@ -436,7 +430,7 @@ class ImmutableDict(Immutable, Mapping):
         return iter(self._proxy)
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, dict.__repr__(self._dict))
+        return f"{self.__class__.__name__}({dict.__repr__(self._dict)})"
 
 
 class Dict(ImmutableDict, MutableMapping):

@@ -20,10 +20,7 @@ class Translator:
         # Run inference
         model_output = self.model(text)
 
-        # Post-process output to return only the translation text
-        translation = model_output[0]["translation_text"]
-
-        return translation
+        return model_output[0]["translation_text"]
 
 
 @serve.deployment
@@ -37,19 +34,14 @@ class Summarizer:
         # Run inference
         model_output = self.model(text, min_length=5, max_length=15)
 
-        # Post-process output to return only the summary text
-        summary = model_output[0]["summary_text"]
-
-        return summary
+        return model_output[0]["summary_text"]
 
     async def __call__(self, http_request: Request) -> str:
         english_text: str = await http_request.json()
         summary = self.summarize(english_text)
 
         translation_ref = self.translator.translate.remote(summary)
-        translation = ray.get(translation_ref)
-
-        return translation
+        return ray.get(translation_ref)
 
 
 deployment_graph = Summarizer.bind(Translator.bind())
