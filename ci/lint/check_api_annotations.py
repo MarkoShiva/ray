@@ -44,16 +44,13 @@ def _ignore(attr, extra_ignore):
     for path in IGNORE_PATHS:
         if path in attr:
             return True
-    for path in extra_ignore or []:
-        if path in attr:
-            return True
-    return False
+    return any(path in attr for path in extra_ignore or [])
 
 
 def verify(symbol, scanned, ok, output, prefix=None, ignore=None):
     """Recursively verify all child symbols of a given module."""
     if not prefix:
-        prefix = symbol.__name__ + "."
+        prefix = f"{symbol.__name__}."
     if symbol in scanned:
         return
     scanned.add(symbol)

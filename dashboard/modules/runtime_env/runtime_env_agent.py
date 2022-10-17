@@ -95,7 +95,7 @@ class ReferenceTable:
 
     def _decrease_reference_for_uris(self, uris):
         default_logger.debug(f"Decrease reference for uris {uris}.")
-        unused_uris = list()
+        unused_uris = []
         for uri, uri_type in uris:
             if self._uri_reference[uri] > 0:
                 self._uri_reference[uri] -= 1
@@ -141,7 +141,7 @@ class ReferenceTable:
         self, runtime_env: RuntimeEnv, serialized_env: str, source_process: str
     ) -> None:
         if source_process in self._reference_exclude_sources:
-            return list()
+            return []
         self._decrease_reference_for_runtime_env(serialized_env)
         uris = self._uris_parser(runtime_env)
         self._decrease_reference_for_uris(uris)
@@ -170,13 +170,13 @@ class RuntimeEnvAgent(
         super().__init__(dashboard_agent)
         self._runtime_env_dir = dashboard_agent.runtime_env_dir
         self._logging_params = dashboard_agent.logging_params
-        self._per_job_logger_cache = dict()
+        self._per_job_logger_cache = {}
         # Cache the results of creating envs to avoid repeatedly calling into
         # conda and other slow calls.
-        self._env_cache: Dict[str, CreatedEnvResult] = dict()
+        self._env_cache: Dict[str, CreatedEnvResult] = {}
         # Maps a serialized runtime env to a lock that is used
         # to prevent multiple concurrent installs of the same env.
-        self._env_locks: Dict[str, asyncio.Lock] = dict()
+        self._env_locks: Dict[str, asyncio.Lock] = {}
         self._gcs_aio_client = self._dashboard_agent.gcs_aio_client
 
         self._pip_plugin = PipPlugin(self._runtime_env_dir)
@@ -215,12 +215,11 @@ class RuntimeEnvAgent(
         self._logger = default_logger
 
     def uris_parser(self, runtime_env):
-        result = list()
+        result = []
         for name, plugin_setup_context in self._plugin_manager.plugins.items():
             plugin = plugin_setup_context.class_instance
             uris = plugin.get_uris(runtime_env)
-            for uri in uris:
-                result.append((uri, UriType(name)))
+            result.extend((uri, UriType(name)) for uri in uris)
         return result
 
     def unused_uris_processor(self, unused_uris: List[Tuple[str, UriType]]) -> None:

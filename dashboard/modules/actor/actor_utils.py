@@ -14,13 +14,13 @@ def construct_actor_groups(actors):
         name: _get_actor_group_stats(group) for name, group in actor_groups.items()
     }
 
-    summarized_actor_groups = {}
-    for name, group in actor_groups.items():
-        summarized_actor_groups[name] = {
+    return {
+        name: {
             "entries": group,
             "summary": stats_by_group[name],
         }
-    return summarized_actor_groups
+        for name, group in actor_groups.items()
+    }
 
 
 def actor_classname_from_task_spec(task_spec):

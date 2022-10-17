@@ -117,38 +117,33 @@ class ImportThread:
 
     def _process_key(self, key):
         """Process the given export key from redis."""
-        if self.mode != ray.WORKER_MODE:
-            # If the same remote function or actor definition appears to be
-            # exported many times, then print a warning. We only issue this
-            # warning from the driver so that it is only triggered once instead
-            # of many times. TODO(rkn): We may want to push this to the driver
-            # through Redis so that it can be displayed in the dashboard more
-            # easily.
-            if key.startswith(b"RemoteFunction") or key.startswith(b"ActorClass"):
-                (
-                    collision_identifier,
-                    name,
+        if self.mode != ray.WORKER_MODE and (
+            key.startswith(b"RemoteFunction") or key.startswith(b"ActorClass")
+        ):
+            (
+                collision_identifier,
+                name,
+                import_type,
+            ) = self._get_import_info_for_collision_detection(key)
+            self.imported_collision_identifiers[collision_identifier] += 1
+            if (
+                self.imported_collision_identifiers[collision_identifier]
+                == ray_constants.DUPLICATE_REMOTE_FUNCTION_THRESHOLD
+            ):
+                logger.warning(
+                    "The %s '%s' has been exported %s times. It's "
+                    "possible that this warning is accidental, but this "
+                    "may indicate that the same remote function is being "
+                    "defined repeatedly from within many tasks and "
+                    "exported to all of the workers. This can be a "
+                    "performance issue and can be resolved by defining "
+                    "the remote function on the driver instead. See "
+                    "https://github.com/ray-project/ray/issues/6240 for "
+                    "more discussion.",
                     import_type,
-                ) = self._get_import_info_for_collision_detection(key)
-                self.imported_collision_identifiers[collision_identifier] += 1
-                if (
-                    self.imported_collision_identifiers[collision_identifier]
-                    == ray_constants.DUPLICATE_REMOTE_FUNCTION_THRESHOLD
-                ):
-                    logger.warning(
-                        "The %s '%s' has been exported %s times. It's "
-                        "possible that this warning is accidental, but this "
-                        "may indicate that the same remote function is being "
-                        "defined repeatedly from within many tasks and "
-                        "exported to all of the workers. This can be a "
-                        "performance issue and can be resolved by defining "
-                        "the remote function on the driver instead. See "
-                        "https://github.com/ray-project/ray/issues/6240 for "
-                        "more discussion.",
-                        import_type,
-                        name,
-                        ray_constants.DUPLICATE_REMOTE_FUNCTION_THRESHOLD,
-                    )
+                    name,
+                    ray_constants.DUPLICATE_REMOTE_FUNCTION_THRESHOLD,
+                )
 
         if key.startswith(b"RemoteFunction:"):
             # TODO (Alex): There's a race condition here if the worker is
@@ -207,8 +202,5 @@ class ImportThread:
         vals = self.gcs_client.internal_kv_get(
             key, ray_constants.KV_NAMESPACE_FUNCTION_TABLE
         )
-        if vals is None:
-            vals = {}
-        else:
-            vals = pickle.loads(vals)
+        vals = {} if vals is None else pickle.loads(vals)
         return (vals.get(field) for field in fields)

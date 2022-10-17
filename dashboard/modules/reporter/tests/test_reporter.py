@@ -53,13 +53,14 @@ def test_profiling(shutdown_only):
                 f"launch_profiling: {launch_profiling}"
             )
         launch_profiling = requests.get(
-            webui_url + "/api/launch_profiling",
+            f"{webui_url}/api/launch_profiling",
             params={
                 "ip": ray.nodes()[0]["NodeManagerAddress"],
                 "pid": actor_pid,
                 "duration": 5,
             },
         ).json()
+
         if launch_profiling["result"]:
             profiling_info = launch_profiling["data"]["profilingInfo"]
             break
@@ -85,7 +86,7 @@ def test_node_physical_stats(enable_test_module, shutdown_only):
 
     def _check_workers():
         try:
-            resp = requests.get(webui_url + "/test/dump?key=node_physical_stats")
+            resp = requests.get(f"{webui_url}/test/dump?key=node_physical_stats")
             resp.raise_for_status()
             result = resp.json()
             assert result["result"] is True

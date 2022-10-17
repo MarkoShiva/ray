@@ -123,7 +123,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Ray"
-copyright = str(datetime.now().year) + ", The Ray Team"
+copyright = f"{str(datetime.now().year)}, The Ray Team"
 author = "The Ray Team"
 
 # The version info for the project you're documenting, acts as replacement for

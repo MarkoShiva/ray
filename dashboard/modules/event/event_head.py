@@ -36,15 +36,14 @@ class EventHead(
     def _update_events(event_list):
         # {job_id: {event_id: event}}
         all_job_events = defaultdict(JobEvents)
+        system_event = False
         for event in event_list:
             event_id = event["event_id"]
-            custom_fields = event.get("custom_fields")
-            system_event = False
-            if custom_fields:
+            if custom_fields := event.get("custom_fields"):
                 job_id = custom_fields.get("job_id", "global") or "global"
             else:
                 job_id = "global"
-            if system_event is False:
+            if not system_event:
                 all_job_events[job_id][event_id] = event
         # TODO(fyrestone): Limit the event count per job.
         for job_id, new_job_events in all_job_events.items():

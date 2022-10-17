@@ -57,7 +57,7 @@ def deep_update(
 
     for k, value in new_dict.items():
         if k not in original and not new_keys_allowed:
-            raise Exception("Unknown config parameter `{}` ".format(k))
+            raise Exception(f"Unknown config parameter `{k}` ")
 
         # Both orginal value and new one are dicts.
         if (

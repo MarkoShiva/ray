@@ -99,14 +99,14 @@ class RemoteFunction:
         # E.g., actors uses "__ray_metadata__" to collect options, we can so something
         # similar for remote functions.
         for k, v in ray_option_utils.task_options.items():
-            setattr(self, "_" + k, task_options.get(k, v.default_value))
+            setattr(self, f"_{k}", task_options.get(k, v.default_value))
         self._runtime_env = parse_runtime_env(self._runtime_env)
         if "runtime_env" in self._default_options:
             self._default_options["runtime_env"] = self._runtime_env
 
         self._language = language
         self._function = _inject_tracing_into_function(function)
-        self._function_name = function.__module__ + "." + function.__name__
+        self._function_name = f"{function.__module__}.{function.__name__}"
         self._function_descriptor = function_descriptor
         self._is_cross_language = language != Language.PYTHON
         self._decorator = getattr(function, "__ray_invocation_decorator__", None)
@@ -340,14 +340,15 @@ class RemoteFunction:
                 self._function_descriptor.function_name,
                 placement_group=placement_group,
             )
-            if not placement_group.is_empty:
-                scheduling_strategy = PlacementGroupSchedulingStrategy(
+            scheduling_strategy = (
+                "DEFAULT"
+                if placement_group.is_empty
+                else PlacementGroupSchedulingStrategy(
                     placement_group,
                     placement_group_bundle_index,
                     placement_group_capture_child_tasks,
                 )
-            else:
-                scheduling_strategy = "DEFAULT"
+            )
 
         serialized_runtime_env_info = None
         if runtime_env is not None:

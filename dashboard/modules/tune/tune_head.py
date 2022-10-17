@@ -69,9 +69,11 @@ class TuneController(dashboard_utils.DashboardHeadModule):
     @routes.get("/tune/enable_tensorboard")
     async def enable_tensorboard(self, req) -> aiohttp.web.Response:
         self._enable_tensorboard()
-        if not self._tensor_board_dir:
-            return rest_response(success=False, message="Error enabling tensorboard")
-        return rest_response(success=True, message="Enabled tensorboard")
+        return (
+            rest_response(success=True, message="Enabled tensorboard")
+            if self._tensor_board_dir
+            else rest_response(success=False, message="Error enabling tensorboard")
+        )
 
     def get_stats(self):
         tensor_board_info = {
@@ -149,7 +151,7 @@ class TuneController(dashboard_utils.DashboardHeadModule):
 
         trial_ids = df["trial_id"]
         for i, value in df["trial_id"].iteritems():
-            if type(value) != str and type(value) != int:
+            if type(value) not in [str, int]:
                 trial_ids[i] = int(value)
 
         df["trial_id"] = trial_ids
@@ -178,7 +180,6 @@ class TuneController(dashboard_utils.DashboardHeadModule):
             "done",
             "episodes_total",
             "training_iteration",
-            "timestamp",
             "timesteps_total",
             "experiment_id",
             "date",
@@ -193,6 +194,7 @@ class TuneController(dashboard_utils.DashboardHeadModule):
             "experiment_tag",
             "trial_id",
         }
+
 
         # filter attributes into floats, metrics, and config variables
         for key, value in first_trial.items():
@@ -228,10 +230,7 @@ class TuneController(dashboard_utils.DashboardHeadModule):
                 details["metrics"][key] = details[key]
                 details.pop(key)
 
-            if details["done"]:
-                details["status"] = "TERMINATED"
-            else:
-                details["status"] = "RUNNING"
+            details["status"] = "TERMINATED" if details["done"] else "RUNNING"
             details.pop("done")
 
             details["job_id"] = os.path.basename(self._logdir)

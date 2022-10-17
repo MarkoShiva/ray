@@ -109,10 +109,7 @@ transformed_ds.show()
 # __data_access_begin__
 @ray.remote
 def consume(data) -> int:
-    num_batches = 0
-    for batch in data.iter_batches(batch_size=10):
-        num_batches += 1
-    return num_batches
+    return sum(1 for _ in data.iter_batches(batch_size=10))
 
 ray.get(consume.remote(ds))
 # -> 15
@@ -127,7 +124,7 @@ class Worker:
         pass
 
     def train(self, shard) -> int:
-        for batch in shard.iter_batches(batch_size=256):
+        for _ in shard.iter_batches(batch_size=256):
             pass
         return shard.count()
 

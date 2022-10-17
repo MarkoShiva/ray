@@ -14,7 +14,7 @@ from ray.train.tensorflow import (
 
 
 def build_model() -> tf.keras.Model:
-    model = tf.keras.Sequential(
+    return tf.keras.Sequential(
         [
             tf.keras.layers.InputLayer(input_shape=()),
             # Add feature dimension, expanding (batch_size,) to (batch_size, 1).
@@ -22,7 +22,6 @@ def build_model() -> tf.keras.Model:
             tf.keras.layers.Dense(1),
         ]
     )
-    return model
 
 
 model = build_model()

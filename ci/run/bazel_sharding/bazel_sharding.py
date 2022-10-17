@@ -108,7 +108,7 @@ def partition_targets(targets: Iterable[str]) -> Tuple[List[str], List[str]]:
     included_targets, excluded_targets = set(), set()
     for target in targets:
         if target[0] == "-":
-            assert not target[1] == "-", f"Double negation is not allowed: {target}"
+            assert target[1] != "-", f"Double negation is not allowed: {target}"
             excluded_targets.add(target[1:])
         else:
             included_targets.add(target)
@@ -282,7 +282,7 @@ def get_rules_for_shard_optimal(
         all_rules.extend(rules)
 
     # Instantiate the shards, each represented by a list.
-    shards: List[List[BazelRule]] = [list() for _ in range(count)]
+    shards: List[List[BazelRule]] = [[] for _ in range(count)]
 
     # The theoretical optimum we are aiming for. Note that this may be unattainable
     # as it doesn't take into account that tests are discrete and cannot be split.
@@ -359,15 +359,11 @@ def main(
     xml_output = run_bazel_query(query, debug)
     rules = extract_rules_from_xml(xml_output)
     rules_grouped_by_time = group_rules_by_time_needed(rules)
-    if sharding_strategy == "optimal":
-        rules_for_this_shard = get_rules_for_shard_optimal(
-            rules_grouped_by_time, index, count
-        )
-    else:
-        rules_for_this_shard = get_rules_for_shard_naive(
-            rules_grouped_by_time, index, count
-        )
-    return rules_for_this_shard
+    return (
+        get_rules_for_shard_optimal(rules_grouped_by_time, index, count)
+        if sharding_strategy == "optimal"
+        else get_rules_for_shard_naive(rules_grouped_by_time, index, count)
+    )
 
 
 if __name__ == "__main__":

@@ -22,9 +22,7 @@ def env_integer(key, default):
 
 
 def env_bool(key, default):
-    if key in os.environ:
-        return True if os.environ[key].lower() == "true" else False
-    return default
+    return os.environ[key].lower() == "true" if key in os.environ else default
 
 
 # Whether event logging to driver is enabled. Set to 0 to disable.

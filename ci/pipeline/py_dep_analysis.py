@@ -58,15 +58,17 @@ def list_rllib_tests(n: int = -1, test: str = None) -> Tuple[str, List[str]]:
             [
                 "bazel",
                 "query",
-                'kind("source file", deps({}))'.format(t),
+                f'kind("source file", deps({t}))',
                 "--output",
                 "label",
             ]
         )
 
+
         srcs = [f.strip() for f in src_out.splitlines()]
-        srcs = [f for f in srcs if f.startswith("//python") and f.endswith(".py")]
-        if srcs:
+        if srcs := [
+            f for f in srcs if f.startswith("//python") and f.endswith(".py")
+        ]:
             all_tests.append((t, srcs))
 
         # Break early if smoke test.
@@ -105,10 +107,8 @@ def _is_path_module(module: str, name: str, _base_dir: str) -> bool:
         return False
 
     bps = ["python"] + module.split(".")
-    path = os.path.join(_base_dir, os.path.join(*bps), name + ".py")
-    if os.path.isfile(path):
-        return True  # file module
-    return False
+    path = os.path.join(_base_dir, os.path.join(*bps), f"{name}.py")
+    return bool(os.path.isfile(path))
 
 
 def _new_from_import(
@@ -189,9 +189,7 @@ def _full_module_path(module, f) -> str:
 
     fn = re.sub(r"\.py$", "", f)
 
-    if not module:
-        return fn
-    return module + "." + fn
+    return f"{module}.{fn}" if module else fn
 
 
 def _should_skip(d: str) -> bool:
@@ -202,9 +200,7 @@ def _should_skip(d: str) -> bool:
         return True
     if d.startswith("python/build"):
         return True
-    if d.startswith("python/ray/cpp"):
-        return True
-    return False
+    return bool(d.startswith("python/ray/cpp"))
 
 
 def _bazel_path_to_module_path(d: str) -> str:
@@ -242,9 +238,7 @@ def _depends(
         if c in visited:
             continue
         visited[c] = True
-        # Reduce to a question of whether there is a path from c to qid.
-        ds = _depends(graph, visited, c, qid)
-        if ds:
+        if ds := _depends(graph, visited, c, qid):
             # From tid -> c -> qid.
             return [tid] + ds
     return []
@@ -281,8 +275,7 @@ def test_depends_on_file(
             # TODO(jungong): What tests are these?????
             continue
 
-        branch = _depends(graph, {}, graph.ids[tid], graph.ids[query])
-        if branch:
+        if branch := _depends(graph, {}, graph.ids[tid], graph.ids[query]):
             return branch
 
     # Does not depend on file.
@@ -350,10 +343,9 @@ if __name__ == "__main__":
     print("building dep graph ...")
     graph = build_dep_graph()
     print(
-        "done. total {} files, {} of which have dependencies.".format(
-            len(graph.ids), len(graph.edges)
-        )
+        f"done. total {len(graph.ids)} files, {len(graph.edges)} of which have dependencies."
     )
+
 
     if args.mode == "circular-dep":
         circles = find_circular_dep(graph)
@@ -374,11 +366,10 @@ if __name__ == "__main__":
         print("Total # of tests: ", len(tests))
 
         for t in tests:
-            branch = test_depends_on_file(graph, t, args.file)
-            if branch:
-                print("{} depends on {}".format(t[0], args.file))
+            if branch := test_depends_on_file(graph, t, args.file):
+                print(f"{t[0]} depends on {args.file}")
                 # Print some debugging info.
                 for n in branch:
                     print("    ", graph.inv_ids[n])
             else:
-                print("{} does not depend on {}".format(t[0], args.file))
+                print(f"{t[0]} does not depend on {args.file}")

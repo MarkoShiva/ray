@@ -240,7 +240,7 @@ class RayParams:
         if enable_object_reconstruction:
             # Turn off object pinning.
             if self._system_config is None:
-                self._system_config = dict()
+                self._system_config = {}
             print(self._system_config)
             self._system_config["lineage_pinning_enabled"] = True
 
@@ -284,10 +284,7 @@ class RayParams:
 
         def wrap_port(port):
             # 0 port means select a random port for the grpc server.
-            if port is None or port == 0:
-                return []
-            else:
-                return [port]
+            return [] if port is None or port == 0 else [port]
 
         # Create a dictionary of the component -> port mapping.
         pre_selected_ports = {
@@ -350,18 +347,22 @@ class RayParams:
                     )
 
         # Used primarily for testing.
-        if os.environ.get("RAY_USE_RANDOM_PORTS", False):
-            if self.min_worker_port is None and self.max_worker_port is None:
-                self.min_worker_port = 0
-                self.max_worker_port = 0
+        if (
+            os.environ.get("RAY_USE_RANDOM_PORTS", False)
+            and self.min_worker_port is None
+            and self.max_worker_port is None
+        ):
+            self.min_worker_port = 0
+            self.max_worker_port = 0
 
-        if self.min_worker_port is not None:
-            if self.min_worker_port != 0 and (
-                self.min_worker_port < 1024 or self.min_worker_port > 65535
-            ):
-                raise ValueError(
-                    "min_worker_port must be 0 or an integer between 1024 and 65535."
-                )
+        if (
+            self.min_worker_port is not None
+            and self.min_worker_port != 0
+            and (self.min_worker_port < 1024 or self.min_worker_port > 65535)
+        ):
+            raise ValueError(
+                "min_worker_port must be 0 or an integer between 1024 and 65535."
+            )
 
         if self.max_worker_port is not None:
             if self.min_worker_port is None:
@@ -379,15 +380,16 @@ class RayParams:
                         "max_worker_port must be higher than min_worker_port."
                     )
 
-        if self.ray_client_server_port is not None:
-            if (
+        if self.ray_client_server_port is not None and (
+            (
                 self.ray_client_server_port < 1024
                 or self.ray_client_server_port > 65535
-            ):
-                raise ValueError(
-                    "ray_client_server_port must be an integer "
-                    "between 1024 and 65535."
-                )
+            )
+        ):
+            raise ValueError(
+                "ray_client_server_port must be an integer "
+                "between 1024 and 65535."
+            )
 
         if self.resources is not None:
             assert "CPU" not in self.resources, (

@@ -27,9 +27,5 @@ def slow_function():
 
 # Invocations of Ray remote functions happen in parallel.
 # All computation is performed in the background, driven by Ray's internal event loop.
-results = []
-for _ in range(4):
-    # this doesn't block
-    results.append(slow_function.remote())
-
+results = [slow_function.remote() for _ in range(4)]
 ray.get(results)

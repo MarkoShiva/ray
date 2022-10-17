@@ -41,8 +41,7 @@ class EventAgent(dashboard_utils.DashboardAgentModule):
                     namespace=ray_constants.KV_NAMESPACE_DASHBOARD,
                     timeout=1,
                 )
-                dashboard_rpc_address = dashboard_rpc_address.decode()
-                if dashboard_rpc_address:
+                if dashboard_rpc_address := dashboard_rpc_address.decode():
                     logger.info("Report events to %s", dashboard_rpc_address)
                     options = ray_constants.GLOBAL_GRPC_OPTIONS
                     channel = utils.init_grpc_channel(

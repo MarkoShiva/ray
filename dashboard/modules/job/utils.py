@@ -76,7 +76,7 @@ def file_tail_iterator(path: str) -> Iterator[Optional[List[str]]]:
             if new_chunk_char_count > MAX_CHUNK_CHAR_LENGTH:
                 # Too many characters, return 20000 in this chunk, and then
                 # continue loop with remaining characters in curr_line
-                truncated_line = curr_line[0 : MAX_CHUNK_CHAR_LENGTH - chunk_char_count]
+                truncated_line = curr_line[:MAX_CHUNK_CHAR_LENGTH - chunk_char_count]
                 lines.append(truncated_line)
                 # Set remainder of current line to process next
                 curr_line = curr_line[MAX_CHUNK_CHAR_LENGTH - chunk_char_count :]
@@ -142,8 +142,15 @@ async def get_driver_jobs(
             continue
         job_id = job_table_entry.job_id.hex()
         metadata = dict(job_table_entry.config.metadata)
-        job_submission_id = metadata.get(JOB_ID_METADATA_KEY)
-        if not job_submission_id:
+        if job_submission_id := metadata.get(JOB_ID_METADATA_KEY):
+            driver = DriverInfo(
+                id=job_id,
+                node_ip_address=job_table_entry.driver_ip_address,
+                pid=job_table_entry.driver_pid,
+            )
+            submission_job_drivers[job_submission_id] = driver
+
+        else:
             driver = DriverInfo(
                 id=job_id,
                 node_ip_address=job_table_entry.driver_ip_address,
@@ -165,14 +172,6 @@ async def get_driver_jobs(
                 driver_info=driver,
             )
             jobs[job_id] = job
-        else:
-            driver = DriverInfo(
-                id=job_id,
-                node_ip_address=job_table_entry.driver_ip_address,
-                pid=job_table_entry.driver_pid,
-            )
-            submission_job_drivers[job_submission_id] = driver
-
     return jobs, submission_job_drivers
 
 
@@ -186,8 +185,7 @@ async def find_job_by_ids(
     """
     # First try to find by job_id
     driver_jobs, submission_job_drivers = await get_driver_jobs(gcs_aio_client)
-    job = driver_jobs.get(job_or_submission_id)
-    if job:
+    if job := driver_jobs.get(job_or_submission_id):
         return job
     # Try to find a driver with the given id
     submission_id = next(

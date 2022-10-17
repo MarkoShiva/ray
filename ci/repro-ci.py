@@ -78,8 +78,7 @@ def env_str(env: Dict[str, Any]):
         elif isinstance(v, Number):
             kvs.append((k, str(v)))
         elif isinstance(v, list):
-            for i, w in enumerate(v):
-                kvs.append((f"{k}_{i}", w))
+            kvs.extend((f"{k}_{i}", w) for i, w in enumerate(v))
         else:
             kvs.append((k, v))
 
@@ -459,7 +458,7 @@ class ReproSession:
             env_name = f"BUILDKITE_PLUGIN_{plugin_short.upper()}_{option_name}"
             plugin_env[env_name] = value
 
-        plugin_env.update(self.plugin_default_env.get(plugin_short, {}))
+        plugin_env |= self.plugin_default_env.get(plugin_short, {})
         return plugin_env
 
     def install_buildkite_plugin(self, plugin: str):

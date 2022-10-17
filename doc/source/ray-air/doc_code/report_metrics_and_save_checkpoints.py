@@ -11,19 +11,17 @@ from ray.train.tensorflow import TensorflowTrainer
 
 
 def build_model() -> tf.keras.Model:
-    model = tf.keras.Sequential(
+    return tf.keras.Sequential(
         [
             tf.keras.layers.InputLayer(input_shape=(1,)),
             tf.keras.layers.Dense(10),
             tf.keras.layers.Dense(1),
         ]
     )
-    return model
 
 
 def train_func():
-    ckpt = session.get_checkpoint()
-    if ckpt:
+    if ckpt := session.get_checkpoint():
         with ckpt.as_directory() as loaded_checkpoint_dir:
             import tensorflow as tf
 

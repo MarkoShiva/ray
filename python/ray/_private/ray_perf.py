@@ -70,10 +70,7 @@ def small_value_batch(n):
 
 @ray.remote
 def create_object_containing_ref():
-    obj_refs = []
-    for _ in range(10000):
-        obj_refs.append(ray.put(1))
-    return obj_refs
+    return [ray.put(1) for _ in range(10000)]
 
 
 def check_optimized_build():

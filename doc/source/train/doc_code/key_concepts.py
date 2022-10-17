@@ -59,12 +59,8 @@ from ray.train.data_parallel_trainer import DataParallelTrainer
 def train_fn(config):
     checkpoint = session.get_checkpoint()
 
-    if checkpoint:
-        state = checkpoint.to_dict()
-    else:
-        state = {"step": 0}
-
-    for i in range(state["step"], 10):
+    state = checkpoint.to_dict() if checkpoint else {"step": 0}
+    for _ in range(state["step"], 10):
         state["step"] += 1
         session.report(
             metrics={"step": state["step"]}, checkpoint=Checkpoint.from_dict(state)

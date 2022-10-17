@@ -87,9 +87,7 @@ def _release_build():
 
 def _valid_branch():
     branch = _get_branch()
-    if branch is None:
-        return False
-    return branch == "master" or _release_build()
+    return False if branch is None else branch == "master" or _release_build()
 
 
 def _get_curr_dir():
@@ -197,22 +195,26 @@ def _build_docker_image(
         print(f"{image_name} image is currently unsupported with " "Python 3.9/3.10")
         return
 
-    build_args = {}
-    build_args["PYTHON_VERSION"] = PY_MATRIX[py_version]
-    # I.e. "py310"[3:] == 10
-    build_args["PYTHON_MINOR_VERSION"] = py_version[3:]
+    build_args = {
+        "PYTHON_VERSION": PY_MATRIX[py_version],
+        "PYTHON_MINOR_VERSION": py_version[3:],
+    }
 
     device_tag = f"{image_type}"
 
     if image_name == "base-deps":
         base_image = BASE_IMAGES[image_type]
+        build_args["BASE_IMAGE"] = base_image
+
+    elif image_name == "ray-worker-container":
+        base_image = f"-{py_version}-{device_tag}"
+
     else:
         base_image = f"-{py_version}-{device_tag}"
 
-    if image_name != "ray-worker-container":
         build_args["BASE_IMAGE"] = base_image
 
-    if image_name in ["ray", "ray-deps", "ray-worker-container"]:
+    if image_name in {"ray", "ray-deps", "ray-worker-container"}:
         wheel = _get_wheel_name(build_args["PYTHON_MINOR_VERSION"])
         build_args["WHEEL_PATH"] = f".whl/{wheel}"
         # Add pip option "--find-links .whl/" to ensure ray-cpp wheel
@@ -266,15 +268,14 @@ def _build_docker_image(
         except Exception as e:
             print(f"FAILURE with error {e}")
 
-        if len(DOCKER_CLIENT.api.images(tagged_name)) == 0:
-            print(f"ERROR building: {tagged_name}. Output below:")
-            print(*cmd_output, sep="\n")
-            if i == 1:
-                raise Exception("FAILED TO BUILD IMAGE")
-            print("TRYING AGAIN")
-        else:
+        if len(DOCKER_CLIENT.api.images(tagged_name)) != 0:
             break
 
+        print(f"ERROR building: {tagged_name}. Output below:")
+        print(*cmd_output, sep="\n")
+        if i == 1:
+            raise Exception("FAILED TO BUILD IMAGE")
+        print("TRYING AGAIN")
     print("BUILT: ", tagged_name)
 
 
@@ -306,8 +307,7 @@ def check_staleness(repository, tag):
 
     age = DOCKER_CLIENT.api.inspect_image(f"{repository}:{tag}")["Created"]
     short_date = datetime.datetime.strptime(age.split("T")[0], "%Y-%m-%d")
-    is_stale = (datetime.datetime.now() - short_date) > datetime.timedelta(days=14)
-    return is_stale
+    return (datetime.datetime.now() - short_date) > datetime.timedelta(days=14)
 
 
 def build_for_all_versions(image_name, py_versions, image_types, **kwargs):
@@ -424,7 +424,7 @@ def push_and_tag_images(
     date_tag = datetime.datetime.now().strftime("%Y-%m-%d")
     sha_tag = _get_commit_sha()
     if _release_build():
-        release_name = re.search("[0-9]+\.[0-9]+\.[0-9].*", _get_branch()).group(0)
+        release_name = re.search("[0-9]+\.[0-9]+\.[0-9].*", _get_branch())[0]
         date_tag = release_name
         sha_tag = release_name
 
@@ -470,7 +470,7 @@ def push_and_tag_images(
         # If no device is specified, it should map to CPU image.
         # For ray-ml image, if no device specified, it should map to GPU image.
         # "-gpu" tag should refer to the ML_CUDA_VERSION
-        for old_tag in tag_mapping.keys():
+        for old_tag in tag_mapping:
             if "cpu" in old_tag and image_name != "ray-ml":
                 new_tags = _create_new_tags(
                     tag_mapping[old_tag], old_str="-cpu", new_str=""
@@ -489,7 +489,7 @@ def push_and_tag_images(
                     tag_mapping[old_tag].extend(new_tags)
 
         # No Python version specified should refer to DEFAULT_PYTHON_VERSION
-        for old_tag in tag_mapping.keys():
+        for old_tag in tag_mapping:
             if DEFAULT_PYTHON_VERSION in old_tag:
                 new_tags = _create_new_tags(
                     tag_mapping[old_tag],
@@ -499,7 +499,7 @@ def push_and_tag_images(
                 tag_mapping[old_tag].extend(new_tags)
 
         # For all tags, create Date/Sha tags
-        for old_tag in tag_mapping.keys():
+        for old_tag in tag_mapping:
             new_tags = _create_new_tags(
                 tag_mapping[old_tag],
                 old_str="nightly",
@@ -508,7 +508,7 @@ def push_and_tag_images(
             tag_mapping[old_tag].extend(new_tags)
 
         # Sanity checking.
-        for old_tag in tag_mapping.keys():
+        for old_tag in tag_mapping:
             if DEFAULT_PYTHON_VERSION in old_tag:
                 if "-cpu" in old_tag:
                     assert "nightly-cpu" in tag_mapping[old_tag]
@@ -543,7 +543,7 @@ def push_and_tag_images(
         print(f"These tags will be created for {image_name}: ", tag_mapping)
 
         # Tag and push all images.
-        for old_tag in tag_mapping.keys():
+        for old_tag in tag_mapping:
             for new_tag in tag_mapping[old_tag]:
                 _tag_and_push(
                     full_image_name,
@@ -644,7 +644,7 @@ if __name__ == "__main__":
     py_versions = args.py_versions
     py_versions = py_versions if isinstance(py_versions, list) else [py_versions]
 
-    image_types = args.device_types if args.device_types else list(BASE_IMAGES.keys())
+    image_types = args.device_types or list(BASE_IMAGES.keys())
 
     assert set(list(CUDA_FULL.keys()) + ["cpu"]) == set(BASE_IMAGES.keys())
 
@@ -716,14 +716,11 @@ if __name__ == "__main__":
             # Build Ray Docker images.
             build_for_all_versions("ray", py_versions, image_types)
 
-            # Only build ML Docker images for ML_CUDA_VERSION or cpu.
-            ml_image_types = [
+            if ml_image_types := [
                 image_type
                 for image_type in image_types
                 if image_type in [ML_CUDA_VERSION, "cpu"]
-            ]
-
-            if len(ml_image_types) > 0:
+            ]:
                 prep_ray_ml()
                 build_for_all_versions(
                     "ray-ml", py_versions, image_types=ml_image_types

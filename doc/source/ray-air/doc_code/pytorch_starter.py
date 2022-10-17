@@ -49,8 +49,7 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
+        return self.linear_relu_stack(x)
 
 
 def train_epoch(dataloader, model, loss_fn, optimizer):

@@ -24,7 +24,7 @@ def f():
 
 # The following takes one second (assuming that
 # ray was able to access all of the allocated nodes).
-for i in range(60):
+for _ in range(60):
     start = time.time()
     ip_addresses = ray.get([f.remote() for _ in range(num_cpus)])
     print(Counter(ip_addresses))

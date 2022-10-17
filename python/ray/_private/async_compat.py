@@ -27,10 +27,7 @@ except ImportError:
 
 def get_new_event_loop():
     """Construct a new event loop. Ray will use uvloop if it exists"""
-    if uvloop:
-        return uvloop.new_event_loop()
-    else:
-        return asyncio.new_event_loop()
+    return uvloop.new_event_loop() if uvloop else asyncio.new_event_loop()
 
 
 def sync_to_async(func):

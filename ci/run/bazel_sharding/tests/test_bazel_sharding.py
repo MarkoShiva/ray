@@ -79,13 +79,13 @@ def test_add_rule_to_best_shard():
     """Test that the best shard in optimal strategy is chosen correctly."""
 
     # If we start with an empty list, then add to first shard
-    shards: List[List[bazel_sharding.BazelRule]] = [list() for _ in range(4)]
+    shards: List[List[bazel_sharding.BazelRule]] = [[] for _ in range(4)]
     optimum = 600
 
     rule = bazel_sharding.BazelRule("mock", "medium")
     bazel_sharding.add_rule_to_best_shard(rule, shards, optimum)
     assert shards[0][0] == rule
-    assert all(not shard for shard in shards[1:])
+    assert not any(shards[1:])
 
     # Add to first shard below optimum
     old_rule = bazel_sharding.BazelRule("mock", "medium")
@@ -96,7 +96,7 @@ def test_add_rule_to_best_shard():
     rule = bazel_sharding.BazelRule("mock", "small")
     bazel_sharding.add_rule_to_best_shard(rule, shards, optimum)
     assert shards[3][0] == rule
-    assert all(shard[-1] == old_rule for shard in shards[0:3])
+    assert all(shard[-1] == old_rule for shard in shards[:3])
 
     # If all shards are above or equal optimum, add to the one with the smallest
     # difference
@@ -110,7 +110,7 @@ def test_add_rule_to_best_shard():
     bazel_sharding.add_rule_to_best_shard(rule, shards, optimum)
     assert shards[3][0] == old_rule_medium
     assert shards[3][-1] == rule
-    assert all(shard[-1] == old_rule for shard in shards[0:3])
+    assert all(shard[-1] == old_rule for shard in shards[:3])
 
 
 def test_bazel_sharding_end_to_end(mock_build_dir):

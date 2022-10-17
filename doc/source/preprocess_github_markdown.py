@@ -19,7 +19,7 @@ def preprocess_github_markdown_file(source_path: str, dest_path: Optional[str] =
         dest_path: The destination path to save the preprocessed markdown file.
             If not provided, save to the same location as source_path.
     """
-    dest_path = dest_path if dest_path else source_path
+    dest_path = dest_path or source_path
     with open(source_path, "r") as f:
         text = f.read()
     # $UNCOMMENT

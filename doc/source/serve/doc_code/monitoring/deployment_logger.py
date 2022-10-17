@@ -21,7 +21,7 @@ class Counter:
 counter = Counter.bind()
 serve.run(counter)
 
-for i in range(10):
+for _ in range(10):
     requests.get("http://127.0.0.1:8000/")
 # __end__
 

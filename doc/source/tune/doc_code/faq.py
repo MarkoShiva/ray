@@ -146,10 +146,7 @@ import numpy as np
 
 
 def train(config, checkpoint_dir=None, num_epochs=5, data=None):
-    for i in range(num_epochs):
-        for sample in data:
-            # ... train on sample
-            pass
+    pass
 
 
 # Some huge dataset

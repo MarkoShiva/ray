@@ -151,7 +151,7 @@ class Collector(object):
         # Prometheus requires that all tag values be strings hence
         # the need to cast none to the empty string before exporting. See
         # https://github.com/census-instrumentation/opencensus-python/issues/480
-        tag_values = [tv if tv else "" for tv in tag_values]
+        tag_values = [tv or "" for tv in tag_values]
 
         if isinstance(agg_data, aggregation_data_module.CountAggregationData):
             metric = CounterMetricFamily(
@@ -206,7 +206,7 @@ class Collector(object):
         else:
             raise ValueError(f"unsupported aggregation type {type(agg_data)}")
 
-    def collect(self):  # pragma: NO COVER
+    def collect(self):    # pragma: NO COVER
         """Collect fetches the statistics from OpenCensus
         and delivers them as Prometheus Metrics.
         Collect is invoked every time a prometheus.Gatherer is run
@@ -220,8 +220,7 @@ class Collector(object):
             desc = self.registered_views[v_name]
             for tag_values in view_data.tag_value_aggregation_data_map:
                 agg_data = view_data.tag_value_aggregation_data_map[tag_values]
-                metric = self.to_metric(desc, tag_values, agg_data)
-                yield metric
+                yield self.to_metric(desc, tag_values, agg_data)
 
 
 class PrometheusStatsExporter(base_exporter.StatsExporter):
@@ -317,10 +316,9 @@ def new_stats_exporter(option):
 
     collector = new_collector(option)
 
-    exporter = PrometheusStatsExporter(
+    return PrometheusStatsExporter(
         options=option, gatherer=option.registry, collector=collector
     )
-    return exporter
 
 
 def new_collector(options):
@@ -333,9 +331,7 @@ def new_collector(options):
 
 def get_view_name(namespace, view):
     """create the name for the view"""
-    name = ""
-    if namespace != "":
-        name = namespace + "_"
+    name = f"{namespace}_" if namespace != "" else ""
     return sanitize(name + view.name)
 
 

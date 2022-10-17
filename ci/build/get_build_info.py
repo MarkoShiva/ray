@@ -22,15 +22,15 @@ def gha_get_self_url():
     sha = os.environ["GITHUB_SHA"]
     repo = os.environ["GITHUB_REPOSITORY"]
     resp = requests.get(
-        "https://api.github.com/repos/{}/commits/{}/check-suites".format(repo, sha)
+        f"https://api.github.com/repos/{repo}/commits/{sha}/check-suites"
     )
+
     data = resp.json()
     for check in data["check_suites"]:
         slug = check["app"]["slug"]
         if slug == "github-actions":
             run_url = check["check_runs_url"]
-            html_url = requests.get(run_url).json()["check_runs"][0]["html_url"]
-            return html_url
+            return requests.get(run_url).json()["check_runs"][0]["html_url"]
 
     # Return a fallback url
     return "https://github.com/ray-project/ray/actions"

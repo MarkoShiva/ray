@@ -240,9 +240,11 @@ async def test_monitor_events():
                         f"Timeout, read events: {sorted_events}, "
                         f"expect events: {expect_events}"
                     )
-                if len(sorted_events) == len(expect_events):
-                    if sorted_events == expect_events:
-                        break
+                if (
+                    len(sorted_events) == len(expect_events)
+                    and sorted_events == expect_events
+                ):
+                    break
                 await asyncio.sleep(1)
 
         await asyncio.gather(

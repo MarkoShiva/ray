@@ -24,9 +24,7 @@ def double(i):
     return i * 2
 
 
-outputs = []
-for i in range(10):
-    outputs.append(double.remote(i))
+outputs = [double.remote(i) for i in range(10)]
 outputs = ray.get(outputs)
 # The double remote function is pickled and uploaded 1 time.
 # __better_approach_end__

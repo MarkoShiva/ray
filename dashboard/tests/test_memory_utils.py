@@ -259,10 +259,8 @@ def test_group_by():
 
     # make sure pid is sorted in the right order.
     for group_key, group_memory_table in memory_table.group.items():
-        pid = 1
-        for entry in group_memory_table.table:
+        for pid, entry in enumerate(group_memory_table.table, start=1):
             assert pid == entry.pid
-            pid += 1
 
 
 if __name__ == "__main__":

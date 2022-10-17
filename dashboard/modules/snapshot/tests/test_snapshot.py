@@ -173,8 +173,10 @@ ray.init(address="auto", namespace="{namespace}")
     ]["jobs"]
     # Divide endTime by 1000 to convert from milliseconds to seconds
     expected_last_activity_at = max(
-        [job.get("endTime", 0) / 1000 for (job_id, job) in jobs_snapshot_data.items()]
+        job.get("endTime", 0) / 1000
+        for (job_id, job) in jobs_snapshot_data.items()
     )
+
 
     assert driver_ray_activity_response.last_activity_at == expected_last_activity_at
 

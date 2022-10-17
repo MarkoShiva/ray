@@ -66,14 +66,10 @@ def recursive_asdict(o):
         return recursive_asdict(o._asdict())
 
     if isinstance(o, (tuple, list)):
-        L = []
-        for k in o:
-            L.append(recursive_asdict(k))
-        return L
+        return [recursive_asdict(k) for k in o]
 
     if isinstance(o, dict):
-        D = {k: recursive_asdict(v) for k, v in o.items()}
-        return D
+        return {k: recursive_asdict(v) for k, v in o.items()}
 
     return o
 
@@ -227,15 +223,14 @@ class ReporterAgent(
             logical_cpu_count = ray._private.utils.get_num_cpus(
                 override_docker_cpu_warning=True
             )
-            # (Override the docker warning to avoid dashboard log spam.)
-
-            # The dashboard expects a physical CPU count as well.
-            # This is not always meaningful in a container, but we will go ahead
-            # and give the dashboard what it wants using psutil.
-            physical_cpu_count = psutil.cpu_count(logical=False)
         else:
             logical_cpu_count = psutil.cpu_count()
-            physical_cpu_count = psutil.cpu_count(logical=False)
+        # (Override the docker warning to avoid dashboard log spam.)
+
+        # The dashboard expects a physical CPU count as well.
+        # This is not always meaningful in a container, but we will go ahead
+        # and give the dashboard what it wants using psutil.
+        physical_cpu_count = psutil.cpu_count(logical=False)
         self._cpu_counts = (logical_cpu_count, physical_cpu_count)
         self._gcs_aio_client = dashboard_agent.gcs_aio_client
         self._ip = dashboard_agent.ip
@@ -317,10 +312,7 @@ class ReporterAgent(
 
     @staticmethod
     def _get_cpu_percent():
-        if IN_KUBERNETES_POD:
-            return k8s_utils.cpu_percent()
-        else:
-            return psutil.cpu_percent()
+        return k8s_utils.cpu_percent() if IN_KUBERNETES_POD else psutil.cpu_percent()
 
     @staticmethod
     def _get_gpu_usage():
@@ -408,27 +400,26 @@ class ReporterAgent(
         raylet_proc = self._get_raylet_proc()
         if raylet_proc is None:
             return []
-        else:
-            workers = set(raylet_proc.children())
-            # Remove the current process (reporter agent), which is also a child of
-            # the Raylet.
-            workers.discard(psutil.Process())
-            self._workers = workers
-            return [
-                w.as_dict(
-                    attrs=[
-                        "pid",
-                        "create_time",
-                        "cpu_percent",
-                        "cpu_times",
-                        "cmdline",
-                        "memory_info",
-                        "memory_full_info",
-                    ]
-                )
-                for w in self._workers
-                if w.status() != psutil.STATUS_ZOMBIE
-            ]
+        workers = set(raylet_proc.children())
+        # Remove the current process (reporter agent), which is also a child of
+        # the Raylet.
+        workers.discard(psutil.Process())
+        self._workers = workers
+        return [
+            w.as_dict(
+                attrs=[
+                    "pid",
+                    "create_time",
+                    "cpu_percent",
+                    "cpu_times",
+                    "cmdline",
+                    "memory_info",
+                    "memory_full_info",
+                ]
+            )
+            for w in self._workers
+            if w.status() != psutil.STATUS_ZOMBIE
+        ]
 
     @staticmethod
     def _get_raylet_proc():

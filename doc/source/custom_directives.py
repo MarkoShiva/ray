@@ -274,7 +274,7 @@ def build_gallery(app):
         source = yaml.safe_load((Path(app.srcdir) / gallery).read_text())
 
         meta = source["meta"]
-        is_titled = True if meta.get("section-titles") else False
+        is_titled = bool(meta.get("section-titles"))
         meta.pop("section-titles")
         projects = source["projects"]
         buttons = source["buttons"]

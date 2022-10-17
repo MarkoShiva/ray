@@ -120,10 +120,7 @@ class JobInfoStorageClient:
             namespace=ray_constants.KV_NAMESPACE_JOB,
             timeout=timeout,
         )
-        if pickled_info is None:
-            return None
-        else:
-            return pickle.loads(pickled_info)
+        return None if pickled_info is None else pickle.loads(pickled_info)
 
     async def put_status(
         self, job_id: str, status: JobStatus, message: Optional[str] = None
@@ -148,10 +145,7 @@ class JobInfoStorageClient:
 
     async def get_status(self, job_id: str) -> Optional[JobStatus]:
         job_info = await self.get_info(job_id)
-        if job_info is None:
-            return None
-        else:
-            return job_info.status
+        return None if job_info is None else job_info.status
 
     async def get_all_jobs(self, timeout: int = 30) -> Dict[str, JobInfo]:
         raw_job_ids_with_prefixes = await self._gcs_aio_client.internal_kv_keys(
@@ -173,12 +167,9 @@ class JobInfoStorageClient:
             job_info = await self.get_info(job_id, timeout)
             return job_id, job_info
 
-        return {
-            job_id: job_info
-            for job_id, job_info in await asyncio.gather(
-                *[get_job_info(job_id) for job_id in job_ids]
-            )
-        }
+        return dict(
+            await asyncio.gather(*[get_job_info(job_id) for job_id in job_ids])
+        )
 
 
 def uri_to_http_components(package_uri: str) -> Tuple[str, str]:
@@ -234,25 +225,23 @@ class JobSubmitRequest:
                 raise TypeError(
                     f"runtime_env must be a dict, got {type(self.runtime_env)}"
                 )
-            else:
-                for k in self.runtime_env.keys():
-                    if not isinstance(k, str):
-                        raise TypeError(
-                            f"runtime_env keys must be strings, got {type(k)}"
-                        )
+            for k in self.runtime_env.keys():
+                if not isinstance(k, str):
+                    raise TypeError(
+                        f"runtime_env keys must be strings, got {type(k)}"
+                    )
 
         if self.metadata is not None:
             if not isinstance(self.metadata, dict):
                 raise TypeError(f"metadata must be a dict, got {type(self.metadata)}")
-            else:
-                for k in self.metadata.keys():
-                    if not isinstance(k, str):
-                        raise TypeError(f"metadata keys must be strings, got {type(k)}")
-                for v in self.metadata.values():
-                    if not isinstance(v, str):
-                        raise TypeError(
-                            f"metadata values must be strings, got {type(v)}"
-                        )
+            for k in self.metadata.keys():
+                if not isinstance(k, str):
+                    raise TypeError(f"metadata keys must be strings, got {type(k)}")
+            for v in self.metadata.values():
+                if not isinstance(v, str):
+                    raise TypeError(
+                        f"metadata values must be strings, got {type(v)}"
+                    )
 
 
 @dataclass

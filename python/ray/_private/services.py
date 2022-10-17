@@ -29,11 +29,7 @@ from ray._raylet import GcsClientOptions, Config
 from ray.core.generated.common_pb2 import Language
 
 resource = None
-if sys.platform != "win32":
-    _timeout = 30
-else:
-    _timeout = 60
-
+_timeout = 30 if sys.platform != "win32" else 60
 EXE_SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 # True if processes are run in the valgrind profiler.
@@ -45,17 +41,25 @@ RAY_PATH = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 RAY_PRIVATE_DIR = "_private"
 AUTOSCALER_PRIVATE_DIR = "autoscaler/_private"
 REDIS_EXECUTABLE = os.path.join(
-    RAY_PATH, "core/src/ray/thirdparty/redis/src/redis-server" + EXE_SUFFIX
+    RAY_PATH, f"core/src/ray/thirdparty/redis/src/redis-server{EXE_SUFFIX}"
 )
+
 
 # Location of the raylet executables.
-RAYLET_EXECUTABLE = os.path.join(RAY_PATH, "core/src/ray/raylet/raylet" + EXE_SUFFIX)
-GCS_SERVER_EXECUTABLE = os.path.join(
-    RAY_PATH, "core/src/ray/gcs/gcs_server" + EXE_SUFFIX
+RAYLET_EXECUTABLE = os.path.join(
+    RAY_PATH, f"core/src/ray/raylet/raylet{EXE_SUFFIX}"
 )
 
+GCS_SERVER_EXECUTABLE = os.path.join(
+    RAY_PATH, f"core/src/ray/gcs/gcs_server{EXE_SUFFIX}"
+)
+
+
 # Location of the cpp default worker executables.
-DEFAULT_WORKER_EXECUTABLE = os.path.join(RAY_PATH, "cpp/default_worker" + EXE_SUFFIX)
+DEFAULT_WORKER_EXECUTABLE = os.path.join(
+    RAY_PATH, f"cpp/default_worker{EXE_SUFFIX}"
+)
+
 
 # Location of the native libraries.
 DEFAULT_NATIVE_LIBRARY_PATH = os.path.join(RAY_PATH, "cpp/lib")
@@ -140,7 +144,7 @@ def propagate_jemalloc_env_var(
         "LD_PRELOAD": jemalloc_path,
     }
     if jemalloc_conf:
-        env_vars.update({"MALLOC_CONF": jemalloc_conf})
+        env_vars["MALLOC_CONF"] = jemalloc_conf
     return env_vars
 
 
@@ -173,7 +177,7 @@ class ConsolePopen(subprocess.Popen):
 
 
 def address(ip_address, port):
-    return ip_address + ":" + str(port)
+    return f"{ip_address}:{str(port)}"
 
 
 def new_port(lower_bound=10000, upper_bound=65535, denylist=None):
@@ -181,9 +185,7 @@ def new_port(lower_bound=10000, upper_bound=65535, denylist=None):
         denylist = set()
     port = random.randint(lower_bound, upper_bound)
     retry = 0
-    while port in denylist:
-        if retry > 100:
-            break
+    while port in denylist and retry <= 100:
         port = random.randint(lower_bound, upper_bound)
         retry += 1
     if retry > 100:
@@ -278,7 +280,7 @@ def _find_address_from_flag(flag: str):
                             proc_addr = arg.split("=")[1]
                             # TODO(mwtian): remove this workaround after Ray
                             # no longer sets --redis-address to None.
-                            if proc_addr != "" and proc_addr != "None":
+                            if proc_addr not in ["", "None"]:
                                 addresses.add(proc_addr)
         except psutil.AccessDenied:
             pass
@@ -530,12 +532,10 @@ def resolve_ip_for_localhost(address: str):
     if not address:
         raise ValueError(f"Malformed address: {address}")
     address_parts = address.split(":")
-    # Make sure localhost isn't resolved to the loopback ip
-    if address_parts[0] == "127.0.0.1" or address_parts[0] == "localhost":
-        ip_address = get_node_ip_address()
-        return ":".join([ip_address] + address_parts[1:])
-    else:
+    if address_parts[0] not in ["127.0.0.1", "localhost"]:
         return address
+    ip_address = get_node_ip_address()
+    return ":".join([ip_address] + address_parts[1:])
 
 
 def node_ip_address_from_perspective(address: str):
@@ -574,7 +574,7 @@ def node_ip_address_from_perspective(address: str):
 def get_node_ip_address(address="8.8.8.8:53"):
     if ray._private.worker._global_node is not None:
         return ray._private.worker._global_node.node_ip_address
-    if sys.platform == "darwin" or sys.platform == "win32":
+    if sys.platform in ["darwin", "win32"]:
         # Due to the mac osx/windows firewall,
         # we use loopback ip as the ip address
         # to prevent security popups.
@@ -698,7 +698,7 @@ def start_ray_process(
     jemalloc_lib_path = os.environ.get(RAY_JEMALLOC_LIB_PATH)
     jemalloc_conf = os.environ.get(RAY_JEMALLOC_CONF)
     jemalloc_comps = os.environ.get(RAY_JEMALLOC_PROFILE)
-    jemalloc_comps = [] if not jemalloc_comps else jemalloc_comps.split(",")
+    jemalloc_comps = jemalloc_comps.split(",") if jemalloc_comps else []
     jemalloc_env_vars = propagate_jemalloc_env_var(
         jemalloc_path=jemalloc_lib_path,
         jemalloc_conf=jemalloc_conf,
@@ -805,7 +805,7 @@ def start_ray_process(
         # CreateProcess, which underlies Popen, is limited to
         # 32,767 characters, including the Unicode terminating null
         # character
-        total_chrs = sum([len(x) for x in command])
+        total_chrs = sum(len(x) for x in command)
         if total_chrs > 31766:
             raise ValueError(
                 f"command is limited to a total of 31767 characters, "
@@ -870,10 +870,7 @@ def start_reaper(fate_share=None):
             os.setpgrp()
     except OSError as e:
         errcode = e.errno
-        if errcode == errno.EPERM and os.getpgrp() == os.getpid():
-            # Nothing to do; we're already a session leader.
-            pass
-        else:
+        if errcode != errno.EPERM or os.getpgrp() != os.getpid():
             logger.warning(
                 f"setpgrp failed, processes may not be cleaned up properly: {e}."
             )
@@ -883,13 +880,12 @@ def start_reaper(fate_share=None):
 
     reaper_filepath = os.path.join(RAY_PATH, RAY_PRIVATE_DIR, "ray_process_reaper.py")
     command = [sys.executable, "-u", reaper_filepath]
-    process_info = start_ray_process(
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_REAPER,
         pipe_stdin=True,
         fate_share=fate_share,
     )
-    return process_info
 
 
 def start_redis(
@@ -1129,7 +1125,7 @@ def _start_redis_instance(
 
     if listen_to_localhost_only:
         command += ["--bind", "127.0.0.1"]
-    pidfile = os.path.join(session_dir_path, "redis-" + uuid.uuid4().hex + ".pid")
+    pidfile = os.path.join(session_dir_path, f"redis-{uuid.uuid4().hex}.pid")
     command += ["--pidfile", pidfile]
     if enable_tls:
         if Config.REDIS_CA_CERT():
@@ -1204,14 +1200,13 @@ def start_log_monitor(
         # Inherit stdout/stderr streams.
         stdout_file = None
         stderr_file = None
-    process_info = start_ray_process(
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_LOG_MONITOR,
         stdout_file=stdout_file,
         stderr_file=stderr_file,
         fate_share=fate_share,
     )
-    return process_info
 
 
 def start_api_server(
@@ -1367,31 +1362,29 @@ def start_api_server(
                 else ""
             )
             # TODO(sang): Change it to the API server.
-            err_msg = "Failed to start the dashboard" + returncode_str
-            if logdir:
-                dashboard_log = os.path.join(logdir, "dashboard.log")
-                # Read last n lines of dashboard log. The log file may be large.
-                n = 10
-                lines = []
-                try:
-                    with open(dashboard_log, "rb") as f:
-                        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
-                            end = mm.size()
-                            for _ in range(n):
-                                sep = mm.rfind(b"\n", 0, end - 1)
-                                if sep == -1:
-                                    break
-                                lines.append(mm[sep + 1 : end].decode("utf-8"))
-                                end = sep
-                    lines.append(f" The last {n} lines of {dashboard_log}:")
-                except Exception as e:
-                    raise Exception(err_msg + f"\nFailed to read dashboard log: {e}")
-
-                last_log_str = "\n" + "\n".join(reversed(lines[-n:]))
-                raise Exception(err_msg + last_log_str)
-            else:
+            err_msg = f"Failed to start the dashboard{returncode_str}"
+            if not logdir:
                 raise Exception(err_msg)
 
+            dashboard_log = os.path.join(logdir, "dashboard.log")
+            # Read last n lines of dashboard log. The log file may be large.
+            n = 10
+            lines = []
+            try:
+                with open(dashboard_log, "rb") as f:
+                    with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                        end = mm.size()
+                        for _ in range(n):
+                            sep = mm.rfind(b"\n", 0, end - 1)
+                            if sep == -1:
+                                break
+                            lines.append(mm[sep + 1 : end].decode("utf-8"))
+                            end = sep
+                lines.append(f" The last {n} lines of {dashboard_log}:")
+            except Exception as e:
+                raise Exception(f"{err_msg}\nFailed to read dashboard log: {e}")
+
+            raise Exception(err_msg + ("\n" + "\n".join(reversed(lines[-n:]))))
         if minimal:
             # If it is the minimal installation, the web url (dashboard url)
             # shouldn't be configured because it doesn't start a server.
@@ -1400,11 +1393,10 @@ def start_api_server(
     except Exception as e:
         if raise_on_failure:
             raise e from e
-        else:
-            # TODO(sang): Change it to the API server.
-            logger.error(f"Failed to start the dashboard: {e}")
-            logger.exception(e)
-            return None, None
+        # TODO(sang): Change it to the API server.
+        logger.error(f"Failed to start the dashboard: {e}")
+        logger.exception(e)
+        return None, None
 
 
 def start_gcs_server(
@@ -1467,14 +1459,13 @@ def start_gcs_server(
         ]
     if redis_password:
         command += [f"--redis_password={redis_password}"]
-    process_info = start_ray_process(
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_GCS_SERVER,
         stdout_file=stdout_file,
         stderr_file=stderr_file,
         fate_share=fate_share,
     )
-    return process_info
 
 
 def start_raylet(
@@ -1589,10 +1580,7 @@ def start_raylet(
         ["{},{}".format(*kv) for kv in static_resources.items()]
     )
 
-    has_java_command = False
-    if shutil.which("java") is not None:
-        has_java_command = True
-
+    has_java_command = shutil.which("java") is not None
     ray_java_installed = False
     try:
         jars_dir = get_ray_jars_dir()
@@ -1602,7 +1590,7 @@ def start_raylet(
         pass
 
     include_java = has_java_command and ray_java_installed
-    if include_java is True:
+    if include_java:
         java_worker_command = build_java_worker_command(
             gcs_address,
             plasma_store_name,
@@ -1732,11 +1720,10 @@ def start_raylet(
         command.append(f"--worker_port_list={worker_port_list}")
     if start_initial_python_workers_for_first_job:
         command.append(
-            "--num_initial_python_workers_for_first_job={}".format(
-                resource_spec.num_cpus
-            )
+            f"--num_initial_python_workers_for_first_job={resource_spec.num_cpus}"
         )
-    command.append("--agent_command={}".format(subprocess.list2cmdline(agent_command)))
+
+    command.append(f"--agent_command={subprocess.list2cmdline(agent_command)}")
     if huge_pages:
         command.append("--huge_pages")
     if socket_to_use:
@@ -1745,7 +1732,7 @@ def start_raylet(
         command.append(
             f"--node-name={node_name}",
         )
-    process_info = start_ray_process(
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_RAYLET,
         use_valgrind=use_valgrind,
@@ -1757,8 +1744,6 @@ def start_raylet(
         fate_share=fate_share,
         env_updates=env_updates,
     )
-
-    return process_info
 
 
 def get_ray_jars_dir():
@@ -1816,9 +1801,14 @@ def build_java_worker_command(
     if node_ip_address is not None:
         pairs.append(("ray.node-ip", node_ip_address))
 
-    pairs.append(("ray.home", RAY_HOME))
-    pairs.append(("ray.logging.dir", os.path.join(session_dir, "logs")))
-    pairs.append(("ray.session-dir", session_dir))
+    pairs.extend(
+        (
+            ("ray.home", RAY_HOME),
+            ("ray.logging.dir", os.path.join(session_dir, "logs")),
+            ("ray.session-dir", session_dir),
+        )
+    )
+
     command = (
         [sys.executable]
         + [setup_worker_path]
@@ -1858,7 +1848,7 @@ def build_cpp_worker_command(
         The command string for starting CPP worker.
     """
 
-    command = [
+    return [
         sys.executable,
         setup_worker_path,
         DEFAULT_WORKER_EXECUTABLE,
@@ -1872,8 +1862,6 @@ def build_cpp_worker_command(
         f"--ray_node_ip_address={node_ip_address}",
         "RAY_WORKER_DYNAMIC_OPTION_PLACEHOLDER",
     ]
-
-    return command
 
 
 def determine_plasma_store_config(
@@ -1899,9 +1887,9 @@ def determine_plasma_store_config(
             value will be preserved.
     """
     if not isinstance(object_store_memory, int):
-        object_store_memory = int(object_store_memory)
+        object_store_memory = object_store_memory
 
-    if huge_pages and not (sys.platform == "linux" or sys.platform == "linux2"):
+    if huge_pages and sys.platform not in ["linux", "linux2"]:
         raise ValueError("The huge_pages argument is only supported on Linux.")
 
     system_memory = ray._private.utils.get_system_memory()
@@ -1910,7 +1898,7 @@ def determine_plasma_store_config(
     # /dev/shm on Linux, unless the shared-memory file system is too small,
     # in which case we default to /tmp on Linux.
     if plasma_directory is None:
-        if sys.platform == "linux" or sys.platform == "linux2":
+        if sys.platform in ["linux", "linux2"]:
             shm_avail = ray._private.utils.get_shared_memory_bytes()
             # Compare the requested memory size to the memory available in
             # /dev/shm.
@@ -1921,15 +1909,9 @@ def determine_plasma_store_config(
                 and object_store_memory > ray_constants.REQUIRE_SHM_SIZE_THRESHOLD
             ):
                 raise ValueError(
-                    "The configured object store size ({} GB) exceeds "
-                    "/dev/shm size ({} GB). This will harm performance. "
-                    "Consider deleting files in /dev/shm or increasing its "
-                    "size with "
-                    "--shm-size in Docker. To ignore this warning, "
-                    "set RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1.".format(
-                        object_store_memory / 1e9, shm_avail / 1e9
-                    )
+                    f"The configured object store size ({object_store_memory / 1000000000.0} GB) exceeds /dev/shm size ({shm_avail / 1000000000.0} GB). This will harm performance. Consider deleting files in /dev/shm or increasing its size with --shm-size in Docker. To ignore this warning, set RAY_OBJECT_STORE_ALLOW_SLOW_STORAGE=1."
                 )
+
             else:
                 plasma_directory = ray._private.utils.get_user_temp_dir()
                 logger.warning(
@@ -1972,11 +1954,9 @@ def determine_plasma_store_config(
 
     if object_store_memory < ray_constants.OBJECT_STORE_MINIMUM_MEMORY_BYTES:
         raise ValueError(
-            "Attempting to cap object store memory usage at {} "
-            "bytes, but the minimum allowed is {} bytes.".format(
-                object_store_memory, ray_constants.OBJECT_STORE_MINIMUM_MEMORY_BYTES
-            )
+            f"Attempting to cap object store memory usage at {object_store_memory} bytes, but the minimum allowed is {ray_constants.OBJECT_STORE_MINIMUM_MEMORY_BYTES} bytes."
         )
+
 
     if (
         sys.platform == "darwin"
@@ -2001,9 +1981,9 @@ def determine_plasma_store_config(
 
     # Print the object store memory using two decimal places.
     logger.debug(
-        "Determine to start the Plasma object store with {} GB memory "
-        "using {}.".format(round(object_store_memory / 10 ** 9, 2), plasma_directory)
+        f"Determine to start the Plasma object store with {round(object_store_memory / 10**9, 2)} GB memory using {plasma_directory}."
     )
+
 
     return plasma_directory, object_store_memory
 
@@ -2066,19 +2046,18 @@ def start_monitor(
         )
         command.append(f"--logging-format={logging_format}")
     if autoscaling_config:
-        command.append("--autoscaling-config=" + str(autoscaling_config))
+        command.append(f"--autoscaling-config={str(autoscaling_config)}")
     if redis_password:
-        command.append("--redis-password=" + redis_password)
+        command.append(f"--redis-password={redis_password}")
     if monitor_ip:
-        command.append("--monitor-ip=" + monitor_ip)
-    process_info = start_ray_process(
+        command.append(f"--monitor-ip={monitor_ip}")
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_MONITOR,
         stdout_file=stdout_file,
         stderr_file=stderr_file,
         fate_share=fate_share,
     )
-    return process_info
 
 
 def start_ray_client_server(
@@ -2138,11 +2117,10 @@ def start_ray_client_server(
         )
     if metrics_agent_port:
         command.append(f"--metrics-agent-port={metrics_agent_port}")
-    process_info = start_ray_process(
+    return start_ray_process(
         command,
         ray_constants.PROCESS_TYPE_RAY_CLIENT_SERVER,
         stdout_file=stdout_file,
         stderr_file=stderr_file,
         fate_share=fate_share,
     )
-    return process_info

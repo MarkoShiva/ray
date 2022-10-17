@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def test_actor_groups(ray_start_with_dashboard):
+
     @ray.remote
     class Foo:
         def __init__(self, num):
@@ -43,7 +44,7 @@ def test_actor_groups(ray_start_with_dashboard):
     while True:
         time.sleep(1)
         try:
-            response = requests.get(webui_url + "/logical/actor_groups")
+            response = requests.get(f"{webui_url}/logical/actor_groups")
             response.raise_for_status()
             actor_groups_resp = response.json()
             assert actor_groups_resp["result"] is True, actor_groups_resp["msg"]
@@ -145,6 +146,7 @@ def test_actors(disable_aiohttp_cache, ray_start_with_dashboard):
 
 
 def test_kill_actor(ray_start_with_dashboard):
+
     @ray.remote
     class Actor:
         def __init__(self):
@@ -181,13 +183,14 @@ def test_kill_actor(ray_start_with_dashboard):
 
     def kill_actor_using_dashboard(actor):
         resp = requests.get(
-            webui_url + "/logical/kill_actor",
+            f"{webui_url}/logical/kill_actor",
             params={
                 "actorId": actor["actorId"],
                 "ipAddress": actor["ipAddress"],
                 "port": actor["port"],
             },
         )
+
         resp.raise_for_status()
         resp_json = resp.json()
         assert resp_json["result"] is True, "msg" in resp_json
@@ -322,7 +325,7 @@ def test_nil_node(enable_test_module, disable_aiohttp_cache, ray_start_with_dash
             resp_data = resp_json["data"]
             actors = resp_data["actors"]
             assert len(actors) == 1
-            response = requests.get(webui_url + "/test/dump?key=node_actors")
+            response = requests.get(f"{webui_url}/test/dump?key=node_actors")
             response.raise_for_status()
             result = response.json()
             assert actor_consts.NIL_NODE_ID not in result["data"]["nodeActors"]

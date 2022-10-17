@@ -18,7 +18,7 @@ def main():
     )
 
     object_ref_list = []
-    for i in range(0, 10):
+    for i in range(10):
         object_ref = ray.put(np.random.rand(1024 * 128, 1024))
         object_ref_list.append(object_ref)
 

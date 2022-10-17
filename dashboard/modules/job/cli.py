@@ -198,9 +198,8 @@ def submit(
             cli_logger.print(cf.bold(f"ray job stop {job_id}"))
 
     cli_logger.newline()
-    sdk_version = client.get_version()
-    # sdk version 0 does not have log streaming
     if not no_wait:
+        sdk_version = client.get_version()
         if int(sdk_version) > 0:
             cli_logger.print(
                 "Tailing logs until the job exits " "(disable with --no-wait):"

@@ -106,7 +106,7 @@ def run_fault_tolerant_loop():
 
         # Set up Ray distributed actors.
         Actor = ray.remote(num_cpus=1, num_gpus=int(not args.cpu))(RayDistributedActor)
-        workers = [Actor.remote() for i in range(args.distributed_world_size)]
+        workers = [Actor.remote() for _ in range(args.distributed_world_size)]
 
         # Get the IP address and a free port of actor 0, which is used for
         # fairseq distributed training.
@@ -120,7 +120,7 @@ def run_fault_tolerant_loop():
             worker.run.remote(address, i, args) for i, worker in enumerate(workers)
         ]
         try:
-            while len(unfinished) > 0:
+            while unfinished:
                 finished, unfinished = ray.wait(unfinished)
                 finished = ray.get(finished)
             retry = False

@@ -68,7 +68,7 @@ def method(*args, **kwargs):
         f"the arguments in the list {valid_kwargs}, for example "
         "'@ray.method(num_returns=2)'."
     )
-    assert len(args) == 0 and len(kwargs) > 0, error_string
+    assert not args and kwargs, error_string
     for key in kwargs:
         key_error_string = (
             f"Unexpected keyword argument to @ray.method: '{key}'. The "
@@ -122,10 +122,7 @@ class ActorMethod:
 
         # Acquire a hard ref to the actor, this is useful mainly when passing
         # actor method handles to remote functions.
-        if hardref:
-            self._actor_hard_ref = actor
-        else:
-            self._actor_hard_ref = None
+        self._actor_hard_ref = actor if hardref else None
 
     def __call__(self, *args, **kwargs):
         raise TypeError(
@@ -364,11 +361,13 @@ class ActorClassInheritanceException(TypeError):
 
 
 def _process_option_dict(actor_options):
-    _filled_options = {}
     arg_names = set(inspect.getfullargspec(_ActorClassMetadata.__init__)[0])
-    for k, v in ray_option_utils.actor_options.items():
-        if k in arg_names:
-            _filled_options[k] = actor_options.get(k, v.default_value)
+    _filled_options = {
+        k: actor_options.get(k, v.default_value)
+        for k, v in ray_option_utils.actor_options.items()
+        if k in arg_names
+    }
+
     _filled_options["runtime_env"] = parse_runtime_env(_filled_options["runtime_env"])
     return _filled_options
 
@@ -383,7 +382,7 @@ class ActorClass:
         __ray_metadata__: Contains metadata for the actor.
     """
 
-    def __init__(cls, name, bases, attr):
+    def __init__(self, name, bases, attr):
         """Prevents users from directly inheriting from an ActorClass.
 
         This will be called when a class is defined with an ActorClass object

@@ -52,8 +52,9 @@ def textproto_split(input_lines, json_encoder):
         [line, tail] = pieces
         next_line = pat_open.sub(b'\\1["\\2",\\3[', line)
         outputs.append(
-            b"" if not prev_comma else b"]" if next_line.endswith(b"}") else b","
+            (b"]" if next_line.endswith(b"}") else b",") if prev_comma else b""
         )
+
         next_line = pat_close.sub(b"]", next_line)
         next_line = pat_line.sub(
             lambda m: textproto_format(*(m.groups() + (json_encoder,))), next_line
@@ -66,7 +67,7 @@ def textproto_split(input_lines, json_encoder):
             next_line.endswith(b"]") or next_line.endswith(b'"')
         )
         prev_tail = tail
-    if len(outputs) > 0:
+    if outputs:
         yield b"".join(outputs)
         del outputs[:]
 
@@ -237,7 +238,7 @@ def shellcheck(bazel_aquery, *shellcheck_argv):
             if bazel_execution_root is None:
                 bazel_execution_root = bazel.info()["execution_root"]
             cwd = bazel_execution_root
-            cmdargs = ["--shell=" + shell, "--external-sources"] + filenames
+            cmdargs = [f"--shell={shell}", "--external-sources"] + filenames
             cmdargs = shellcheck_argv + cmdargs
             proc = subprocess.Popen(cmdargs, stdin=subprocess.PIPE, cwd=cwd)
             try:
@@ -257,7 +258,7 @@ def main(program, command, *command_args):
     elif command == preclean.__name__:
         result = preclean(*command_args)
     else:
-        raise ValueError("Unrecognized command: " + command)
+        raise ValueError(f"Unrecognized command: {command}")
     return result
 
 

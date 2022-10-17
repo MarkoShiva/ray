@@ -30,11 +30,10 @@ class FruitMarket:
     async def check_price(self, fruit: str, amount: float) -> float:
         if fruit not in self.directory:
             return -1
-        else:
-            fruit_stand = self.directory[fruit]
-            ref: ray.ObjectRef = await fruit_stand.check_price.remote(amount)
-            result = await ref
-            return result
+        fruit_stand = self.directory[fruit]
+        ref: ray.ObjectRef = await fruit_stand.check_price.remote(amount)
+        result = await ref
+        return result
 
 
 @serve.deployment(user_config={"price": 3})

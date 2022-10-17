@@ -173,7 +173,7 @@ def train_loop_per_worker():
     data_shard: Dataset = train.get_dataset_shard("train")
 
     # Iterate over 10 epochs of data.
-    for epoch in range(10):
+    for _ in range(10):
         for batch in data_shard.iter_batches():
             print("Do some training on batch", batch)
 
@@ -206,7 +206,7 @@ def train_loop_per_worker():
     data_shard: Dataset = train.get_dataset_shard("train")
 
     # Iterate over 10 epochs of data.
-    for epoch in range(10):
+    for _ in range(10):
         for batch in data_shard.iter_batches(
             batch_size=10_000,
             local_shuffle_buffer_size=100_000,

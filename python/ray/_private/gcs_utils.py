@@ -375,16 +375,14 @@ class GcsClient:
         self, timeout: Optional[float] = None
     ) -> gcs_service_pb2.GetAllNodeInfoReply:
         req = gcs_service_pb2.GetAllNodeInfoRequest()
-        reply = self._node_info_stub.GetAllNodeInfo(req, timeout=timeout)
-        return reply
+        return self._node_info_stub.GetAllNodeInfo(req, timeout=timeout)
 
     @_auto_reconnect
     def get_all_job_info(
         self, timeout: Optional[float] = None
     ) -> gcs_service_pb2.GetAllJobInfoReply:
         req = gcs_service_pb2.GetAllJobInfoRequest()
-        reply = self._job_info_stub.GetAllJobInfo(req, timeout=timeout)
-        return reply
+        return self._job_info_stub.GetAllJobInfo(req, timeout=timeout)
 
 
 class GcsAioClient:

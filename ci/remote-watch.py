@@ -89,10 +89,10 @@ def git_branch_info_to_track():
         pr = os.getenv("TRAVIS_PULL_REQUEST", "false")
         if pr != "false":
             expected_sha = os.environ["TRAVIS_PULL_REQUEST_SHA"]
-            ref = "refs/pull/{}/head".format(pr)
+            ref = f"refs/pull/{pr}/head"
         else:
             expected_sha = os.environ["TRAVIS_COMMIT"]
-            ref = "refs/heads/{}".format(os.environ["TRAVIS_BRANCH"])
+            ref = f'refs/heads/{os.environ["TRAVIS_BRANCH"]}'
 
     result = (ref, remote, expected_sha)
 
@@ -145,8 +145,7 @@ def terminate_my_process_group():
 
 def yield_poll_schedule():
     schedule = [0, 5, 5, 10, 20, 40, 40] + [60] * 5 + [120] * 10 + [300]
-    for item in schedule:
-        yield item
+    yield from schedule
     while True:
         yield schedule[-1]
 
@@ -196,7 +195,7 @@ def should_keep_alive(commit_msg):
 
 def monitor():
     (ref, remote, expected_sha) = git_branch_info_to_track()
-    expected_line = "{}\t{}".format(expected_sha, ref)
+    expected_line = f"{expected_sha}\t{ref}"
 
     if should_keep_alive(git("show", "-s", "--format=%B", "HEAD^-")):
         logger.info(
@@ -278,11 +277,9 @@ def main(program, *args):
     repo_slug = get_repo_slug()
     event_name = get_ci_event_name()
     if repo_slug not in skipped_repos or event_name == "pull_request":
-        result = monitor()
-    else:
-        logger.info("Skipping monitoring %s %s build", repo_slug, event_name)
-        result = 0
-    return result
+        return monitor()
+    logger.info("Skipping monitoring %s %s build", repo_slug, event_name)
+    return 0
 
 
 if __name__ == "__main__":
